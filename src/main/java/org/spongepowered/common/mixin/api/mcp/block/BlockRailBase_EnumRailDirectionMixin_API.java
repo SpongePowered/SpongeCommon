@@ -24,13 +24,19 @@
  */
 package org.spongepowered.common.mixin.api.mcp.block;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import net.minecraft.block.BlockRailBase;
 import org.spongepowered.api.data.type.RailDirection;
+import org.spongepowered.api.util.Direction;
 import org.spongepowered.asm.mixin.Implements;
 import org.spongepowered.asm.mixin.Interface;
 import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.common.util.Constants;
+
+import java.util.Optional;
 
 @Mixin(BlockRailBase.EnumRailDirection.class)
 @Implements(@Interface(iface = RailDirection.class, prefix = "rail$"))
@@ -46,6 +52,28 @@ public abstract class BlockRailBase_EnumRailDirectionMixin_API implements RailDi
     @Intrinsic
     public String rail$getName() {
         return shadow$getName();
+    }
+
+    @Override
+    public Optional<Direction> getAscendingDirection() {
+        return Constants.RailDirections.getAscendingDirection((BlockRailBase.EnumRailDirection) (Object) this);
+    }
+
+    @Override
+    public Direction getFirstDirection() {
+        return Constants.RailDirections.getFirstDirection((BlockRailBase.EnumRailDirection) (Object) this);
+    }
+
+    @Override
+    public Direction getSecondDirection() {
+        return Constants.RailDirections.getSecondDirection((BlockRailBase.EnumRailDirection) (Object) this);
+    }
+
+    @Override
+    public boolean isFacing(final Direction direction) {
+        checkNotNull(direction, "direction");
+        final Direction cardinalDirection = Direction.getClosest(direction.asOffset(), Direction.Division.CARDINAL);
+        return getFirstDirection().equals(cardinalDirection) || getSecondDirection().equals(cardinalDirection);
     }
 
     @SuppressWarnings("ConstantConditions")

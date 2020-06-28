@@ -26,11 +26,15 @@ package org.spongepowered.common.mixin.api.mcp.block;
 
 import net.minecraft.block.BlockLog;
 import org.spongepowered.api.data.type.LogAxis;
+import org.spongepowered.api.util.Axis;
 import org.spongepowered.asm.mixin.Implements;
 import org.spongepowered.asm.mixin.Interface;
 import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.common.util.Constants;
+
+import java.util.Optional;
 
 @Mixin(BlockLog.EnumAxis.class)
 @Implements(@Interface(iface = LogAxis.class, prefix = "log$"))
@@ -45,6 +49,11 @@ public abstract class BlockLog_EnumAxisMixin_API implements LogAxis {
     @Intrinsic
     public String log$getName() {
         return shadow$getName();
+    }
+
+    @Override
+    public Optional<Axis> toAxis() {
+        return Constants.DirectionFunctions.convertLogAxisToSponge((BlockLog.EnumAxis) (Object) this);
     }
 
     @SuppressWarnings("ConstantConditions")
