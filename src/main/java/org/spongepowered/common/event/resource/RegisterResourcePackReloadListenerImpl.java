@@ -22,37 +22,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.event.resource;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import com.google.common.reflect.TypeToken;
+import org.spongepowered.api.Engine;
+import org.spongepowered.api.event.Cause;
+import org.spongepowered.api.event.resource.RegisterResourceReloadListenerEvent;
+import org.spongepowered.api.resource.ResourceReloadListener;
 
-/**
- * A module installed for each plugin.
- */
-public final class PluginModule extends AbstractModule {
-
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
-
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
-    }
-
-    @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
-
-        this.install(new InjectionPointProvider());
-
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
-
-        this.install(new PluginConfigurationModule());
+public class RegisterResourcePackReloadListenerImpl<E extends Engine> extends AbstractRegisterEvent<E, ResourceReloadListener> implements RegisterResourceReloadListenerEvent<E> {
+    public RegisterResourcePackReloadListenerImpl(Cause cause, TypeToken<E> type) {
+        super(cause, type);
     }
 }

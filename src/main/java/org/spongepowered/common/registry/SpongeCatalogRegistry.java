@@ -39,6 +39,8 @@ import net.minecraft.entity.passive.PandaEntity;
 import net.minecraft.entity.passive.fish.TropicalFishEntity;
 import net.minecraft.entity.projectile.AbstractArrowEntity;
 import net.minecraft.item.ItemTier;
+import net.minecraft.resources.PackCompatibility;
+import net.minecraft.resources.ResourcePackType;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.state.properties.ChestType;
 import net.minecraft.state.properties.DoorHingeSide;
@@ -139,6 +141,9 @@ import org.spongepowered.api.placeholder.PlaceholderParser;
 import org.spongepowered.api.registry.CatalogRegistry;
 import org.spongepowered.api.registry.DuplicateRegistrationException;
 import org.spongepowered.api.registry.UnknownTypeException;
+import org.spongepowered.api.resource.meta.NamedMetaSection;
+import org.spongepowered.api.resource.pack.PackType;
+import org.spongepowered.api.resource.pack.PackVersion;
 import org.spongepowered.api.scoreboard.CollisionRule;
 import org.spongepowered.api.scoreboard.Visibility;
 import org.spongepowered.api.scoreboard.displayslot.DisplaySlot;
@@ -214,6 +219,7 @@ import org.spongepowered.common.registry.builtin.vanilla.SoundEventSupplier;
 import org.spongepowered.common.registry.builtin.vanilla.TileEntityTypeSupplier;
 import org.spongepowered.common.registry.builtin.vanilla.VillagerProfessionSupplier;
 import org.spongepowered.common.registry.builtin.vanilla.VillagerTypeSupplier;
+import org.spongepowered.common.resource.meta.MetaSectionStreamGenerator;
 import org.spongepowered.common.world.dimension.SpongeDimensionType;
 
 import java.util.ArrayList;
@@ -530,6 +536,8 @@ public final class SpongeCatalogRegistry implements CatalogRegistry {
             .generateRegistry(MooshroomType.class, ResourceKey.minecraft("mooshroom_type"), Arrays.stream(MooshroomEntity.Type.values()), true, false)
             .generateRegistry(MovementType.class, ResourceKey.sponge("movement_type"), MovementTypeStreamGenerator.stream(), true, true)
             .generateRegistry(MusicDisc.class, ResourceKey.minecraft("music_disc"), MusicDiscStreamGenerator.stream(), true, false)
+            .generateRegistry(PackType.class, ResourceKey.minecraft("pack_type"), Arrays.stream(ResourcePackType.values()), true, false)
+            .generateRegistry(PackVersion.class, ResourceKey.minecraft("pack_version"), Arrays.stream(PackCompatibility.values()), true, false)
             .generateRegistry(PandaGene.class, ResourceKey.minecraft("panda_gene"), Arrays.stream(PandaEntity.Type.values()), true, false)
             .generateRegistry(PhantomPhase.class, ResourceKey.minecraft("phantom_phase"), Arrays.stream(PhantomEntity.AttackPhase.values()), true, false)
             .generateRegistry(PickupRule.class, ResourceKey.minecraft("pickup_rule"), Arrays.stream(AbstractArrowEntity.PickupStatus.values()), true, false)

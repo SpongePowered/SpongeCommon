@@ -22,37 +22,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.resource.meta;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import net.minecraft.resources.data.PackMetadataSection;
+import org.spongepowered.api.ResourceKey;
+import org.spongepowered.api.resource.meta.MetaSection;
 
-/**
- * A module installed for each plugin.
- */
-public final class PluginModule extends AbstractModule {
+import java.util.stream.Stream;
 
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
+public class MetaSectionStreamGenerator {
+    private MetaSectionStreamGenerator() {}
 
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
-    }
-
-    @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
-
-        this.install(new InjectionPointProvider());
-
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
-
-        this.install(new PluginConfigurationModule());
+    public static Stream<MetaSection<?>> stream() {
+        return Stream.of(
+                // use pack/ prefix for metadata that belongs in pack.mcmeta
+                // use resource/ prefix for metadata that belongs to a resource.mcmeta
+                new SpongeMetaSection<>(ResourceKey.minecraft("pack/pack"), PackMetadataSection.SERIALIZER)
+        );
     }
 }

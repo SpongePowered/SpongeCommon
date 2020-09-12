@@ -36,6 +36,8 @@ import net.minecraft.server.management.PlayerProfileCache;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.chunk.listener.IChunkStatusListenerFactory;
+import org.spongepowered.asm.mixin.Implements;
+import org.spongepowered.asm.mixin.Interface;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -49,7 +51,8 @@ import java.io.File;
 import java.net.Proxy;
 
 @Mixin(DedicatedServer.class)
-public abstract class DedicatedServerMixin_Vanilla extends MinecraftServer implements VanillaServer {
+@Implements(@Interface(iface = VanillaServer.class, prefix = "server$"))
+public abstract class DedicatedServerMixin_Vanilla extends MinecraftServer {
 
     public DedicatedServerMixin_Vanilla(final File p_i50590_1_, final Proxy p_i50590_2_, final DataFixer dataFixerIn,
         final Commands p_i50590_4_, final YggdrasilAuthenticationService p_i50590_5_,
@@ -74,14 +77,14 @@ public abstract class DedicatedServerMixin_Vanilla extends MinecraftServer imple
         lifecycle.establishCommands();
 
         // TODO Minecraft 1.14 - Evaluate exactly where we want to call this
-        lifecycle.callStartingEngineEvent(this);
+        lifecycle.callStartingEngineEvent(cast());
         super.run();
     }
 
     @Inject(method = "init", at = @At("RETURN"))
     private void vanilla$callStartedEngineAndLoadedGame(final CallbackInfoReturnable<Boolean> cir) {
         final SpongeLifecycle lifecycle = SpongeBootstrap.getLifecycle();
-        lifecycle.callStartedEngineEvent(this);
+        lifecycle.callStartedEngineEvent(cast());
 
         // TODO Minecraft 1.14 - For now, fire LoadedGameEvent right away but this may not be the best place..
 
@@ -90,6 +93,10 @@ public abstract class DedicatedServerMixin_Vanilla extends MinecraftServer imple
 
     @Override
     protected void loadAllWorlds(final String saveName, final String worldNameIn, final long seed, final WorldType type, final JsonElement generatorOptions) {
-        this.getWorldManager().loadAllWorlds(saveName, worldNameIn, seed, type, generatorOptions, false, null, Difficulty.NORMAL);
+        cast().getWorldManager().loadAllWorlds(saveName, worldNameIn, seed, type, generatorOptions, false, null, Difficulty.NORMAL);
+    }
+
+    private VanillaServer cast() {
+        return (VanillaServer) this;
     }
 }

@@ -22,37 +22,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.mixin.api.mcp.resource.pack;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import net.minecraft.resources.ResourcePackType;
+import org.spongepowered.api.ResourceKey;
+import org.spongepowered.api.resource.pack.PackType;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.common.SpongeCommon;
 
-/**
- * A module installed for each plugin.
- */
-public final class PluginModule extends AbstractModule {
+@Mixin(ResourcePackType.class)
+public abstract class MixinResourcePackType_API implements PackType {
 
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
+    private ResourceKey api$key;
 
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void api$setKey(String enumName, int ordinal, String directoryNameIn, CallbackInfo ci) {
+        this.api$key = ResourceKey.of(SpongeCommon.getActivePlugin(), enumName.toLowerCase());
     }
 
     @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
-
-        this.install(new InjectionPointProvider());
-
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
-
-        this.install(new PluginConfigurationModule());
+    public ResourceKey getKey() {
+        return this.api$key;
     }
 }

@@ -22,37 +22,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.resource.meta;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import net.minecraft.resources.data.IMetadataSectionSerializer;
+import org.spongepowered.api.data.persistence.DataFormats;
+import org.spongepowered.api.data.persistence.DataView;
+import org.spongepowered.api.resource.meta.MetaSection;
+
+import java.io.IOException;
 
 /**
- * A module installed for each plugin.
+ * A fallback metadata section serializer to get a specific section without a
+ * backing object.
  */
-public final class PluginModule extends AbstractModule {
+public class SpongeMetadataSectionSerializer<T> implements IMetadataSectionSerializer<T> {
+    private static final Gson gson = new Gson();
+    private final MetaSection<T> section;
 
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
-
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
+    public SpongeMetadataSectionSerializer(MetaSection<T> section) {
+        this.section = section;
     }
 
     @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
+    public String getSectionName() {
+        return section.getQuery().toString();
+    }
 
-        this.install(new InjectionPointProvider());
-
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
-
-        this.install(new PluginConfigurationModule());
+    @Override
+    public T deserialize(JsonObject json) {
+        try {
+            DataView data = DataFormats.JSON.get().read(gson.toJson(json));
+            return section.deserialize(data);
+        } catch (IOException e) {
+            throw new JsonParseException(e);
+        }
     }
 }

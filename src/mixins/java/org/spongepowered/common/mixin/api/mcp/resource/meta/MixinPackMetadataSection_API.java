@@ -22,29 +22,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.provider;
+package org.spongepowered.common.mixin.api.mcp.resource.meta;
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import org.spongepowered.api.asset.Asset;
-import org.spongepowered.api.asset.AssetId;
-import org.spongepowered.api.asset.AssetManager;
-import org.spongepowered.common.inject.SpongeInjectionPoint;
-import org.spongepowered.plugin.PluginContainer;
+import net.kyori.adventure.text.Component;
+import net.minecraft.resources.data.PackMetadataSection;
+import net.minecraft.util.text.ITextComponent;
+import org.spongepowered.api.resource.meta.PackMeta;
+import org.spongepowered.asm.mixin.Implements;
+import org.spongepowered.asm.mixin.Interface;
+import org.spongepowered.asm.mixin.Intrinsic;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.common.adventure.SpongeAdventure;
 
-import java.util.NoSuchElementException;
-
-public class PluginAssetProvider implements Provider<Asset> {
-
-    @Inject private PluginContainer container;
-    @Inject private AssetManager assetManager;
-    @Inject private SpongeInjectionPoint point;
+@Mixin(PackMetadataSection.class)
+@Implements(@Interface(iface = PackMeta.class, prefix = "pack$"))
+public abstract class MixinPackMetadataSection_API implements PackMeta {
+    // @formatter:off
+    @Shadow public abstract ITextComponent shadow$getDescription();
+    @Shadow public abstract int shadow$getPackFormat();
+    // @formatter:on
 
     @Override
-    public Asset get() {
-        String name = this.point.getAnnotation(AssetId.class).value();
-        return this.assetManager.getAsset(this.container, name)
-                .orElseThrow(() -> new NoSuchElementException("Cannot find asset " + name));
+    public Component getDescription() {
+        return SpongeAdventure.asAdventure(shadow$getDescription());
     }
 
+    @Intrinsic
+    public int pack$getPackFormat() {
+        return shadow$getPackFormat();
+    }
 }

@@ -22,37 +22,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.resource;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import org.apache.commons.io.IOUtils;
+import org.spongepowered.api.data.persistence.DataFormat;
+import org.spongepowered.api.data.persistence.DataView;
+import org.spongepowered.api.resource.Resource;
 
-/**
- * A module installed for each plugin.
- */
-public final class PluginModule extends AbstractModule {
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.util.stream.Stream;
 
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
+public interface ISpongeResource extends Resource {
 
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
+    @Override
+    default BufferedReader newBufferedReader(Charset charset) {
+        return new BufferedReader(new InputStreamReader(this.getInputStream(), charset));
     }
 
     @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
+    default String readString(Charset charset) throws IOException {
+        return IOUtils.toString(newBufferedReader(charset));
+    }
 
-        this.install(new InjectionPointProvider());
+    @Override
+    default Stream<String> lines(Charset charset) {
+        return newBufferedReader(charset).lines();
+    }
 
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
+    @Override
+    default byte[] readBytes() throws IOException {
+        return IOUtils.toByteArray(getInputStream());
+    }
 
-        this.install(new PluginConfigurationModule());
+    @Override
+    default DataView readDataView(DataFormat format) throws IOException {
+        return format.readFrom(getInputStream());
     }
 }

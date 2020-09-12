@@ -22,37 +22,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.util;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import com.google.common.collect.ForwardingList;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.util.CloseableList;
 
-/**
- * A module installed for each plugin.
- */
-public final class PluginModule extends AbstractModule {
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
 
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
+public abstract class CloseableListImpl<T extends Closeable> extends ForwardingList<T> implements CloseableList<T> {
 
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
+    public static <T extends Closeable> CloseableList<T> create(List<T> list) {
+        return new CloseableListImpl<T>() {
+            @Override
+            protected List<T> delegate() {
+                return list;
+            }
+        };
     }
 
     @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
-
-        this.install(new InjectionPointProvider());
-
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
-
-        this.install(new PluginConfigurationModule());
+    public void close() {
+        for (T obj : delegate()) {
+            try {
+                if (obj != null) {
+                    obj.close();
+                }
+            } catch (IOException e) {
+                // quietly ignore
+            }
+        }
     }
 }

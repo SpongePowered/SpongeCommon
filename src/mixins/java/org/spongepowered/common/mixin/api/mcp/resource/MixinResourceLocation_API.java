@@ -22,37 +22,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.inject.plugin;
+package org.spongepowered.common.mixin.api.mcp.resource;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import org.apache.logging.log4j.Logger;
-import org.spongepowered.common.inject.InjectionPointProvider;
-import org.spongepowered.common.inject.provider.PluginConfigurationModule;
-import org.spongepowered.plugin.PluginContainer;
+import net.minecraft.util.ResourceLocation;
+import org.spongepowered.asm.mixin.Implements;
+import org.spongepowered.asm.mixin.Interface;
+import org.spongepowered.asm.mixin.Intrinsic;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.common.resource.ISpongeResourcePath;
 
-/**
- * A module installed for each plugin.
- */
-public final class PluginModule extends AbstractModule {
+@Mixin(ResourceLocation.class)
+@Implements(@Interface(iface = ISpongeResourcePath.class, prefix = "resource$"))
+public abstract class MixinResourceLocation_API implements ISpongeResourcePath {
 
-    private final PluginContainer container;
-    private final Class<?> pluginClass;
+    // @formatter:off
+    @Shadow public abstract String shadow$getNamespace();
+    @Shadow public abstract String shadow$getPath();
+    // @formatter:on
 
-    public PluginModule(final PluginContainer container, final Class<?> pluginClass) {
-        this.container = container;
-        this.pluginClass = pluginClass;
+    @Intrinsic
+    public String resource$getNamespace() {
+        return shadow$getNamespace();
     }
 
-    @Override
-    protected void configure() {
-        this.bind(this.pluginClass).in(Scopes.SINGLETON);
-
-        this.install(new InjectionPointProvider());
-
-        this.bind(PluginContainer.class).toInstance(this.container);
-        this.bind(Logger.class).toInstance(this.container.getLogger());
-
-        this.install(new PluginConfigurationModule());
+    @Intrinsic
+    public String resource$getPath() {
+        return shadow$getPath();
     }
+
 }

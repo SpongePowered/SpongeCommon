@@ -22,30 +22,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.asset;
+package org.spongepowered.common.mixin.api.mcp.resource;
 
-import org.spongepowered.api.asset.Asset;
-import org.spongepowered.plugin.PluginContainer;
+import net.minecraft.resources.IFutureReloadListener;
+import org.spongepowered.api.resource.ResourceReloadListener;
+import org.spongepowered.asm.mixin.Implements;
+import org.spongepowered.asm.mixin.Interface;
+import org.spongepowered.asm.mixin.Intrinsic;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 
-import java.net.URL;
+import java.util.concurrent.CompletableFuture;
 
-public final class SpongeAsset implements Asset {
+@Mixin(IFutureReloadListener.IStage.class)
+@Implements(@Interface(iface = ResourceReloadListener.AsyncStage.class, prefix="resource$"))
+public interface MixinIFutureReloadListener_IStage_API extends ResourceReloadListener.AsyncStage {
 
-    private final PluginContainer plugin;
-    private final URL url;
+    //@formatter:off
+    @Shadow CompletableFuture shadow$markCompleteAwaitingOthers(Object result);
+    //@formatter:on
 
-    SpongeAsset(PluginContainer plugin, URL url) {
-        this.plugin = plugin;
-        this.url = url;
-    }
-
-    @Override
-    public PluginContainer getOwner() {
-        return this.plugin;
-    }
-
-    @Override
-    public URL getUrl() {
-        return this.url;
+    @Intrinsic
+    default <T> CompletableFuture<T> resource$markComplete(T result) {
+        return shadow$markCompleteAwaitingOthers(result);
     }
 }

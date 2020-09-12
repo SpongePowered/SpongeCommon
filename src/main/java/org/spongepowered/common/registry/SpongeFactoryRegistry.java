@@ -44,6 +44,8 @@ import org.spongepowered.api.network.channel.ChannelExceptionHandler;
 import org.spongepowered.api.registry.DuplicateRegistrationException;
 import org.spongepowered.api.registry.FactoryRegistry;
 import org.spongepowered.api.registry.UnknownTypeException;
+import org.spongepowered.api.resource.ResourceReloadListener;
+import org.spongepowered.api.resource.pack.Pack;
 import org.spongepowered.api.resourcepack.ResourcePack;
 import org.spongepowered.api.util.Range;
 import org.spongepowered.api.util.Transform;
@@ -64,6 +66,8 @@ import org.spongepowered.common.item.SpongeItemStackSnapshot;
 import org.spongepowered.common.network.channel.SpongeChannelExceptionHandlers;
 import org.spongepowered.common.registry.type.advancement.SpongeAdvancementCriterionFactory;
 import org.spongepowered.common.relocate.co.aikar.timings.SpongeTimingsFactory;
+import org.spongepowered.common.resource.SpongeResourceReloadListenerFactory;
+import org.spongepowered.common.resource.pack.SpongePackFactory;
 import org.spongepowered.common.resourcepack.SpongeResourcePackFactory;
 import org.spongepowered.common.util.SpongeRange;
 import org.spongepowered.common.util.SpongeTransformFactory;
@@ -109,6 +113,8 @@ public final class SpongeFactoryRegistry implements FactoryRegistry {
         this
             .registerFactory(Audiences.Factory.class, new AudienceFactory())
             .registerFactory(AdvancementCriterion.Factory.class, SpongeAdvancementCriterionFactory.INSTANCE)
+            .registerFactory(ResourceReloadListener.Factory.class, SpongeResourceReloadListenerFactory.INSTANCE)
+            .registerFactory(Pack.Factory.class, SpongePackFactory.INSTANCE)
             .registerFactory(CommandCause.Factory.class, SpongeCommandCauseFactory.INSTANCE)
             .registerFactory(CommandTreeNode.NodeFactory.class, SpongeCommandTreeBuilderFactory.INSTANCE)
             .registerFactory(ItemStackSnapshot.Factory.class, () -> SpongeItemStackSnapshot.EMPTY)

@@ -22,42 +22,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.asset;
+package org.spongepowered.common.resource.pack;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.google.inject.Singleton;
-import org.spongepowered.api.Sponge;
-import org.spongepowered.api.asset.Asset;
-import org.spongepowered.api.asset.AssetManager;
-import org.spongepowered.common.SpongeCommon;
 import org.spongepowered.plugin.PluginContainer;
 
-import java.net.URL;
-import java.util.Optional;
+public class SpongePluginPack extends SpongeFileSystemPack {
+    private final PluginContainer plugin;
 
-@Singleton
-public final class SpongeAssetManager implements AssetManager {
-
-    private static final String DEFAULT_ASSET_DIR = "assets/";
-    private static final ClassLoader CLASS_LOADER = Sponge.class.getClassLoader();
-
-    @Override
-    public Optional<Asset> getAsset(PluginContainer container, String name) {
-        checkNotNull(container);
-        checkNotNull(name);
-        checkArgument(!name.isEmpty(), "name cannot be empty");
-
-        URL url = CLASS_LOADER.getResource(DEFAULT_ASSET_DIR + container.getMetadata().getId() + '/' + name);
-        if (url == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new SpongeAsset(container, url));
+    protected SpongePluginPack(PluginContainer plugin) {
+        super(plugin.getPath());
+        this.plugin = plugin;
     }
 
     @Override
-    public Optional<Asset> getAsset(String name) {
-        return this.getAsset(SpongeCommon.getPlugin(), name);
+    public String getName() {
+        return "plugin:" + plugin.getMetadata().getId();
     }
 }
