@@ -97,8 +97,6 @@ public abstract class MapDataMixin_MapOptimization extends WorldSavedData implem
     // To support both SpongeVanilla and SpongeForge, we use reflection to access it
     private static Field mapOptimizationImpl$dimensionField;
 
-
-
     static {
         try {
             mapOptimizationImpl$mapInfoConstructor = MapData.MapInfo.class.getDeclaredConstructor(MapData.class, EntityPlayer.class);
@@ -174,7 +172,6 @@ public abstract class MapDataMixin_MapOptimization extends WorldSavedData implem
                     it.remove();
                     continue;
                 }
-
                 if (!mixinMapInfo.mapOptimizationBridge$isValid()) {
                     this.mapDecorations.remove(player.getName());
                 } else {

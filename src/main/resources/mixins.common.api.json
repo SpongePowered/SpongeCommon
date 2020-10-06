@@ -235,6 +235,8 @@
         "mcp.item.crafting.IRecipeMixin_API",
         "mcp.item.crafting.ShapedRecipesMixin_API",
         "mcp.item.crafting.ShapelessRecipesMixin_API",
+        "mcp.map.MapInfoMixin_API",
+        "mcp.map.MapDecorationMixin_API",
         "mcp.network.NetHandlerPlayServerMixin_API",
         "mcp.network.NetworkManagerMixin_API",
         "mcp.network.PacketBufferMixin_API",
@@ -359,6 +361,7 @@
         "mcp.world.gen.feature.WorldGenWaterLilyMixin_API",
         "mcp.world.gen.structure.MapGenStructureMixin_API",
         "mcp.world.gen.structure.MapGenVillageMixin_API",
+        "mcp.world.storage.MapStorageMixin_API",
         "mcp.world.storage.WorldInfoMixin_API",
         "service.permission.SubjectMixin_API",
         "world.extent.ExtentMixin_API"

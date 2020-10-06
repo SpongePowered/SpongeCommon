@@ -58,6 +58,9 @@ import org.spongepowered.api.item.FireworkEffect;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.item.merchant.TradeOffer;
+import org.spongepowered.api.map.MapCanvas;
+import org.spongepowered.api.map.color.MapColor;
+import org.spongepowered.api.map.decoration.MapDecoration;
 import org.spongepowered.api.profile.GameProfile;
 import org.spongepowered.api.text.BookView;
 import org.spongepowered.api.text.Text;
@@ -78,6 +81,15 @@ import org.spongepowered.common.data.builder.item.*;
 import org.spongepowered.common.data.builder.manipulator.InvisibilityDataAddVanishUpdater;
 import org.spongepowered.common.data.builder.manipulator.immutable.block.ImmutableSpongeTreeDataBuilder;
 import org.spongepowered.common.data.builder.manipulator.immutable.item.ImmutableItemEnchantmentDataBuilder;
+import org.spongepowered.common.data.manipulator.immutable.ImmutableSpongeMapInfoData;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoDecorationValueProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoLockedProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoCanvasValueProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoLocationValueProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoScaleValueProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoTracksPlayersValueProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoUnlimitedTrackingValueProcessor;
+import org.spongepowered.common.data.processor.value.mapinfo.MapInfoWorldValueProcessor;
 import org.spongepowered.common.effect.potion.PotionEffectContentUpdater;
 import org.spongepowered.common.effect.potion.SpongePotionBuilder;
 import org.spongepowered.common.entity.SpongeEntityArchetypeBuilder;
@@ -127,6 +139,8 @@ import org.spongepowered.common.entity.SpongeEntitySnapshotBuilder;
 import org.spongepowered.common.item.inventory.SpongeItemStackBuilder;
 import org.spongepowered.common.item.inventory.ItemStackSnapshotDuplicateManipulatorUpdater;
 import org.spongepowered.common.item.merchant.SpongeTradeOfferBuilder;
+import org.spongepowered.common.map.canvas.SpongeMapCanvasDataBuilder;
+import org.spongepowered.common.map.decoration.SpongeMapDecorationDataBuilder;
 import org.spongepowered.common.world.SpongeLocatableBlockBuilder;
 import org.spongepowered.common.world.storage.SpongePlayerData;
 
@@ -198,6 +212,10 @@ public final class DataRegistrar {
         dataManager.registerBuilder(TradeOffer.class, new SpongeTradeOfferBuilder());
 
         dataManager.registerBuilder(PotionEffect.class, new SpongePotionBuilder());
+
+        // Map stuff
+        dataManager.registerBuilder(MapCanvas.class, new SpongeMapCanvasDataBuilder());
+        dataManager.registerBuilder(MapDecoration.class, new SpongeMapDecorationDataBuilder());
 
         // Content Updaters
         dataManager.registerContentUpdater(BlockState.class, new SpongeBlockStateMetaContentUpdater());
@@ -785,6 +803,9 @@ public final class DataRegistrar {
         DataUtil.registerDataProcessorAndImpl(DisabledSlotsData.class, SpongeDisabledSlotsData.class,
                 ImmutableDisabledSlotsData.class, ImmutableSpongeDisabledSlotsData.class, new DisabledSlotsDataProcessor());
 
+        DataUtil.registerDataProcessorAndImpl(MapInfoData.class, SpongeMapInfoData.class, ImmutableMapInfoData.class,
+                ImmutableSpongeMapInfoData.class, new MapInfoDataProcessor());
+
         // Values
 
         DataUtil.registerValueProcessor(Keys.FUSE_DURATION, new FuseDurationValueProcessor());
@@ -901,7 +922,17 @@ public final class DataRegistrar {
         DataUtil.registerValueProcessor(Keys.EXACT_TELEPORT, new EndGatewayExactTeleportValueProcessor());
         DataUtil.registerValueProcessor(Keys.ARMOR_STAND_TAKING_DISABLED, new TakingDisabledValueProcessor());
         DataUtil.registerValueProcessor(Keys.ARMOR_STAND_PLACING_DISABLED, new PlacingDisabledValueProcessor());
-        
+        DataUtil.registerValueProcessor(Keys.ARMOR_STAND_PLACING_DISABLED, new PlacingDisabledValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_LOCATION, new MapInfoLocationValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_WORLD, new MapInfoWorldValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_TRACKS_PLAYERS, new MapInfoTracksPlayersValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_UNLIMITED_TRACKING, new MapInfoUnlimitedTrackingValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_SCALE, new MapInfoScaleValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_CANVAS, new MapInfoCanvasValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_LOCKED, new MapInfoLockedProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_DECORATIONS, new MapInfoDecorationValueProcessor());
+        DataUtil.registerValueProcessor(Keys.MAP_INFO, new ItemMapInfoValueProcessor());
+
         // Properties
         final PropertyRegistry propertyRegistry = Sponge.getPropertyRegistry();
 

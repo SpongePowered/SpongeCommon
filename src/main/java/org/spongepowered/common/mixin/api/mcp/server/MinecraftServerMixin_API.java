@@ -49,6 +49,7 @@ import org.spongepowered.api.text.channel.MessageChannel;
 import org.spongepowered.api.world.ChunkTicketManager;
 import org.spongepowered.api.world.World;
 import org.spongepowered.api.world.WorldArchetype;
+import org.spongepowered.api.world.map.MapStorage;
 import org.spongepowered.api.world.storage.ChunkLayout;
 import org.spongepowered.api.world.storage.WorldProperties;
 import org.spongepowered.asm.mixin.Final;
@@ -62,6 +63,7 @@ import org.spongepowered.common.bridge.server.MinecraftServerBridge;
 import org.spongepowered.common.bridge.world.WorldServerBridge;
 import org.spongepowered.common.profile.SpongeProfileManager;
 import org.spongepowered.common.text.SpongeTexts;
+import org.spongepowered.common.util.Constants;
 import org.spongepowered.common.world.WorldManager;
 import org.spongepowered.common.world.storage.SpongeChunkLayout;
 
@@ -69,6 +71,7 @@ import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -329,6 +332,14 @@ public abstract class MinecraftServerMixin_API implements Server, ConsoleSource 
     @Override
     public Optional<Scoreboard> getServerScoreboard() {
         return WorldManager.getWorldByDimensionId(0).map(worldServer -> (Scoreboard) worldServer.getScoreboard());
+    }
+
+    @Override
+    public Optional<MapStorage> getMapStorage() {
+        return WorldManager.getWorldByDimensionId(Constants.World.OVERWORLD_DIMENSION_ID)
+                .map(world -> (net.minecraft.world.World)world)
+                .map(net.minecraft.world.World::getMapStorage)
+                .map(mapStorage -> (MapStorage)mapStorage);
     }
 
     @Override
