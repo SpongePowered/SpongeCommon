@@ -36,16 +36,20 @@ import net.minecraft.world.GameRules;
 import net.minecraft.world.GameType;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.storage.WorldInfo;
+import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.DataContainer;
 import org.spongepowered.api.data.DataQuery;
 import org.spongepowered.api.data.DataView;
 import org.spongepowered.api.data.persistence.DataFormats;
 import org.spongepowered.api.entity.living.player.gamemode.GameMode;
+import org.spongepowered.api.event.SpongeEventFactory;
+import org.spongepowered.api.event.world.ChangeWorldTimeEvent;
 import org.spongepowered.api.world.DimensionType;
 import org.spongepowered.api.world.GeneratorType;
 import org.spongepowered.api.world.PortalAgentType;
 import org.spongepowered.api.world.SerializationBehavior;
 import org.spongepowered.api.world.SerializationBehaviors;
+import org.spongepowered.api.world.World;
 import org.spongepowered.api.world.difficulty.Difficulty;
 import org.spongepowered.api.world.gen.WorldGeneratorModifier;
 import org.spongepowered.api.world.storage.WorldProperties;
@@ -54,11 +58,15 @@ import org.spongepowered.asm.mixin.Interface;
 import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.common.SpongeImpl;
 import org.spongepowered.common.bridge.world.DimensionTypeBridge;
 import org.spongepowered.common.bridge.world.GameRulesBridge;
 import org.spongepowered.common.bridge.world.WorldInfoBridge;
 import org.spongepowered.common.data.persistence.NbtTranslator;
+import org.spongepowered.common.event.ShouldFire;
 import org.spongepowered.common.registry.type.world.WorldGeneratorModifierRegistryModule;
 import org.spongepowered.common.util.Constants;
 
@@ -163,6 +171,31 @@ public abstract class WorldInfoMixin_API implements WorldProperties {
     @Intrinsic
     public void worldproperties$setWorldTime(final long time) {
         this.shadow$setWorldTime(time);
+    }
+
+    @Inject(method = "setWorldTime", at = @At("HEAD"), cancellable = true)
+    private void onSetWorldTimeVanilla(long time, CallbackInfo ci) {
+        if (!ShouldFire.CHANGE_WORLD_TIME_EVENT) {
+            return;
+        }
+
+        final Optional<World> optionalTargetWorld = Sponge.getServer().getWorld(getUniqueId());
+
+        if (!optionalTargetWorld.isPresent()) {
+            return;
+        }
+
+        final ChangeWorldTimeEvent event = SpongeEventFactory.createChangeWorldTimeEvent(
+                Sponge.getCauseStackManager().getCurrentCause(),
+                time,
+                time,
+                optionalTargetWorld.get(),
+                worldTime
+        );
+
+        if (Sponge.getEventManager().post(event)) {
+            ci.cancel();
+        }
     }
 
     @Override

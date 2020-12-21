@@ -29,22 +29,26 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.server.MinecraftServer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(CommandTime.class)
 public abstract class CommandTimeMixin_MultiWorldCommand {
 
-    /**
-     * @author Minecrell
-     * @reason Modify time only in the command sender's world
-     */
-    @Redirect(method = "execute",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/command/CommandTime;setAllWorldTimes(Lnet/minecraft/server/MinecraftServer;I)V"))
-    private void multiWorldCommand$setWorldTime(final CommandTime self, final MinecraftServer server, final int time, final MinecraftServer server2,
-        final ICommandSender sender, final String[] args) {
-        sender.getEntityWorld().setWorldTime(time);
+    private boolean modificationCancelled = false;
+    private boolean incrementCancelled = false;
+
+    @Inject(method = "execute", cancellable = true,
+            at = @At(
+                    value = "INVOKE",
+                    shift = At.Shift.AFTER,
+                    target = "Lnet/minecraft/command/CommandTime;setAllWorldTimes(Lnet/minecraft/server/MinecraftServer;I)V"))
+    private void multiWorldCommand$cancelAfterSetWorldTime(CallbackInfo ci) {
+        if (modificationCancelled) {
+            ci.cancel();
+            modificationCancelled = false;
+        }
     }
 
     /**
@@ -52,13 +56,48 @@ public abstract class CommandTimeMixin_MultiWorldCommand {
      * @reason Modify time only in the command sender's world
      */
     @Redirect(method = "execute",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/command/CommandTime;incrementAllWorldTimes(Lnet/minecraft/server/MinecraftServer;I)V"))
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/command/CommandTime;setAllWorldTimes(Lnet/minecraft/server/MinecraftServer;I)V"))
+    private void multiWorldCommand$setWorldTime(final CommandTime self, final MinecraftServer server, final int time, final MinecraftServer server2,
+                                                final ICommandSender sender, final String[] args) {
+        sender.getEntityWorld().setWorldTime(time);
+
+        if (time != sender.getEntityWorld().getWorldTime()) {
+            modificationCancelled = true;
+        }
+    }
+
+    @Inject(method = "execute", cancellable = true,
+            at = @At(
+                    value = "INVOKE",
+                    shift = At.Shift.AFTER,
+                    target = "Lnet/minecraft/command/CommandTime;incrementAllWorldTimes(Lnet/minecraft/server/MinecraftServer;I)V"))
+    private void multiWorldCommand$cancelAfterIncrementWorldTime(CallbackInfo ci) {
+        if (incrementCancelled) {
+            ci.cancel();
+            incrementCancelled = false;
+        }
+    }
+
+    /**
+     * @author Minecrell
+     * @reason Modify time only in the command sender's world
+     */
+    @Redirect(method = "execute",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/command/CommandTime;incrementAllWorldTimes(Lnet/minecraft/server/MinecraftServer;I)V"))
     private void multiWorldCommand$incrementWorldTime(
         final CommandTime self, final MinecraftServer server, final int time, final MinecraftServer server2, final ICommandSender sender,
         final String[] args) {
-        sender.getEntityWorld().setWorldTime(sender.getEntityWorld().getWorldTime() + time);
+        final long worldTime = sender.getEntityWorld().getWorldTime() + time;
+
+        sender.getEntityWorld().setWorldTime(worldTime);
+
+        if (worldTime != sender.getEntityWorld().getWorldTime()) {
+            incrementCancelled = true;
+        }
     }
 
 }
