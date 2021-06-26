@@ -56,8 +56,11 @@ import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.map.MapCanvas;
 import org.spongepowered.api.map.decoration.MapDecoration;
+import org.spongepowered.api.profile.GameProfile;
+import org.spongepowered.api.profile.property.ProfileProperty;
 import org.spongepowered.api.registry.RegistryType;
 import org.spongepowered.api.registry.RegistryTypes;
+import org.spongepowered.api.world.server.ServerLocation;
 import org.spongepowered.common.SpongeCommon;
 import org.spongepowered.common.block.SpongeBlockStateBuilder;
 import org.spongepowered.common.data.builder.item.SpongeItemStackSnapshotDataBuilder;
@@ -70,8 +73,11 @@ import org.spongepowered.common.entity.SpongeEntitySnapshotBuilder;
 import org.spongepowered.common.item.SpongeItemStackBuilder;
 import org.spongepowered.common.map.canvas.SpongeMapCanvasDataBuilder;
 import org.spongepowered.common.map.decoration.SpongeMapDecorationDataBuilder;
+import org.spongepowered.common.profile.SpongeGameProfileDataBuilder;
+import org.spongepowered.common.profile.SpongeProfilePropertyDataBuilder;
 import org.spongepowered.common.registry.provider.DataTranslatorProvider;
 import org.spongepowered.common.util.Constants;
+import org.spongepowered.common.world.server.SpongeServerLocationBuilder;
 import org.spongepowered.common.world.storage.SpongePlayerData;
 import org.spongepowered.common.world.storage.SpongePlayerDataBuilder;
 
@@ -124,10 +130,10 @@ public final class SpongeDataManager implements DataManager {
         Objects.requireNonNull(builder);
 
         if (this.builders.putIfAbsent(clazz, builder) != null) {
-            SpongeCommon.getLogger().warn("A DataBuilder has already been registered for {}. Attempted to register {} instead.", clazz,
+            SpongeCommon.logger().warn("A DataBuilder has already been registered for {}. Attempted to register {} instead.", clazz,
                     builder.getClass());
         } else if (!(builder instanceof AbstractDataBuilder)) {
-            SpongeCommon.getLogger().warn("A custom DataBuilder is not extending AbstractDataBuilder! It is recommended that "
+            SpongeCommon.logger().warn("A custom DataBuilder is not extending AbstractDataBuilder! It is recommended that "
                     + "the custom data builder does extend it to gain automated content versioning updates and maintain "
                     + "simplicity. The offending builder's class is: {}", builder.getClass());
         }
@@ -330,6 +336,9 @@ public final class SpongeDataManager implements DataManager {
         this.registerBuilder(BlockState.class, new SpongeBlockStateBuilder());
         this.registerBuilder(MapDecoration.class, new SpongeMapDecorationDataBuilder());
         this.registerBuilder(MapCanvas.class, new SpongeMapCanvasDataBuilder());
+        this.registerBuilder(ServerLocation.class, new SpongeServerLocationBuilder());
+        this.registerBuilder(GameProfile.class, new SpongeGameProfileDataBuilder());
+        this.registerBuilder(ProfileProperty.class, new SpongeProfilePropertyDataBuilder());
     }
 
     public Optional<DataStore> getDataStore(ResourceKey key, Class<? extends DataHolder> typeToken) {

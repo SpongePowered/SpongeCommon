@@ -25,21 +25,21 @@
 package org.spongepowered.common.world.portal;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongepowered.api.world.server.ServerLocation;
 import org.spongepowered.api.world.portal.Portal;
 import org.spongepowered.api.world.portal.PortalType;
+import org.spongepowered.api.world.server.ServerLocation;
 
 import java.util.Optional;
 
-
-public final class VanillaPortal implements Portal {
+public class VanillaPortal implements Portal {
 
     private final PortalType type;
-    private final ServerLocation origin, destination;
+    private final ServerLocation minCorner;
+    private final @Nullable ServerLocation destination;
 
-    public VanillaPortal(final PortalType type, final ServerLocation origin, final @Nullable ServerLocation destination) {
+    public VanillaPortal(final PortalType type, final ServerLocation minCorner, final @Nullable ServerLocation destination) {
         this.type = type;
-        this.origin = origin;
+        this.minCorner = minCorner;
         this.destination = destination;
     }
 
@@ -50,7 +50,7 @@ public final class VanillaPortal implements Portal {
 
     @Override
     public ServerLocation origin() {
-        return this.origin;
+        return this.minCorner;
     }
 
     // Vanilla has no knowledge of where portals go to until you try, best we can do...

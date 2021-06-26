@@ -204,11 +204,13 @@ dependencies {
     val asmVersion: String by project
     val guavaVersion: String by project
     val jlineVersion: String by project
+    val jansiVersion: String by project
     val log4jVersion: String by project
     val mixinVersion: String by project
     val modlauncherVersion: String by project
     val pluginSpiVersion: String by project
     val timingsVersion: String by project
+    val tinyLogVersion: String by project
 
     api(project(":", configuration = "launch"))
     implementation(project(":", configuration = "accessors"))
@@ -222,8 +224,8 @@ dependencies {
     installer("org.spongepowered:configurate-hocon:$apiConfigurateVersion")
     installer("org.spongepowered:configurate-core:$apiConfigurateVersion")
     installer("net.sf.jopt-simple:jopt-simple:5.0.3")
-    installer("org.tinylog:tinylog-api:2.2.1")
-    installer("org.tinylog:tinylog-impl:2.2.1")
+    installer("org.tinylog:tinylog-api:$tinyLogVersion")
+    installer("org.tinylog:tinylog-impl:$tinyLogVersion")
     // Override ASM versions, and explicitly declare dependencies so ASM is excluded from the manifest.
     val asmExclusions = sequenceOf("-commons", "-tree", "-analysis", "")
             .map { "asm$it" }
@@ -275,7 +277,13 @@ dependencies {
     libraries("net.minecrell:terminalconsoleappender:1.3.0-SNAPSHOT")
     libraries("org.jline:jline-terminal:$jlineVersion")
     libraries("org.jline:jline-reader:$jlineVersion")
-    libraries("org.jline:jline-terminal-jansi:$jlineVersion")
+    libraries("org.jline:jline-terminal-jansi:$jlineVersion") {
+        exclude(group = "org.fusesource.jansi", module = "jansi")
+    }
+    // If JLine is updated and updates the jansi dep, the above exclusion
+    // and below library can be removed.
+    // https://github.com/SpongePowered/Sponge/issues/3429
+    libraries("org.fusesource.jansi:jansi:$jansiVersion")
     libraries("org.spongepowered:timings:$timingsVersion")
 
     // Launch Dependencies - Needed to bootstrap the engine(s)

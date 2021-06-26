@@ -33,7 +33,6 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
@@ -71,7 +70,6 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.block.entity.Sign;
 import org.spongepowered.api.command.CommandCause;
-import org.spongepowered.api.command.exception.CommandException;
 import org.spongepowered.api.command.manager.CommandMapping;
 import org.spongepowered.api.data.Keys;
 import org.spongepowered.api.data.type.HandType;
@@ -108,7 +106,6 @@ import org.spongepowered.common.adventure.SpongeAdventure;
 import org.spongepowered.common.bridge.server.level.ServerPlayerBridge;
 import org.spongepowered.common.bridge.network.ConnectionHolderBridge;
 import org.spongepowered.common.bridge.server.players.PlayerListBridge;
-import org.spongepowered.common.command.SpongeCommandCompletion;
 import org.spongepowered.common.command.manager.SpongeCommandManager;
 import org.spongepowered.common.command.registrar.BrigadierBasedRegistrar;
 import org.spongepowered.common.data.value.ImmutableSpongeListValue;
@@ -120,6 +117,7 @@ import org.spongepowered.common.event.tracking.phase.packet.BasicPacketContext;
 import org.spongepowered.common.event.tracking.phase.packet.PacketPhase;
 import org.spongepowered.common.hooks.PlatformHooks;
 import org.spongepowered.common.item.util.ItemStackUtil;
+import org.spongepowered.common.util.CommandUtil;
 import org.spongepowered.common.util.Constants;
 import org.spongepowered.common.util.VecHelper;
 import org.spongepowered.math.vector.Vector3d;
@@ -135,8 +133,6 @@ import java.util.function.Consumer;
 
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class ServerGamePacketListenerImplMixin implements ConnectionHolderBridge {
-
-    private static final String[] IMPL$EMPTY_COMMAND_ARRAY = new String[] { "" };
 
     // @formatter:off
     @Shadow @Final public Connection connection;
@@ -177,7 +173,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
             cancellable = true)
     private void impl$getSuggestionsFromNonBrigCommand(final ServerboundCommandSuggestionPacket packet, final CallbackInfo ci) {
         final String rawCommand = packet.getCommand();
-        final String[] command = this.impl$extractCommandString(rawCommand);
+        final String[] command = CommandUtil.extractCommandString(rawCommand);
         final CommandCause cause = CommandCause.create();
         final SpongeCommandManager manager = SpongeCommandManager.get(this.server);
         if (!rawCommand.contains(" ")) {
@@ -196,16 +192,8 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
             if (mappingOptional.isPresent()) {
                 final CommandMapping mapping = mappingOptional.get();
                 if (mapping.registrar().canExecute(cause, mapping)) {
-                    try {
-                        final SuggestionsBuilder builder = new SuggestionsBuilder(rawCommand, rawCommand.lastIndexOf(" ") + 1);
-                        mapping.registrar().complete(cause, mapping, command[0], command[1])
-                                .forEach(completion -> builder.suggest(completion.completion(),
-                                            completion.tooltip().map(SpongeAdventure::asVanilla).orElse(null)));
-                        this.connection.send(new ClientboundCommandSuggestionsPacket(packet.getId(), builder.build()));
-                    } catch (final CommandException e) {
-                        cause.sendMessage(Identity.nil(), Component.text("Unable to create suggestions for your tab completion"));
-                        this.connection.send(new ClientboundCommandSuggestionsPacket(packet.getId(), Suggestions.empty().join()));
-                    }
+                    final SuggestionsBuilder builder = CommandUtil.createSuggestionsForRawCommand(rawCommand, command, cause, mapping);
+                    this.connection.send(new ClientboundCommandSuggestionsPacket(packet.getId(), builder.build()));
                 } else {
                     this.connection.send(new ClientboundCommandSuggestionsPacket(packet.getId(), Suggestions.empty().join()));
                 }
@@ -312,7 +300,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
         if (fireMoveEvent) {
             final MoveEntityEvent event = SpongeEventFactory.createMoveEntityEvent(PhaseTracker.getCauseStackManager().currentCause(), (ServerPlayer) this.player, fromPosition,
                     toPosition, toPosition);
-            if (SpongeCommon.postEvent(event)) {
+            if (SpongeCommon.post(event)) {
                 cancelMovement = true;
             } else {
                 toPosition = event.destinationPosition();
@@ -322,7 +310,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
         if (significantRotation && fireRotationEvent) {
             final RotateEntityEvent event = SpongeEventFactory.createRotateEntityEvent(PhaseTracker.getCauseStackManager().currentCause(), (ServerPlayer) this.player, fromRotation,
                     toRotation);
-            if (SpongeCommon.postEvent(event)) {
+            if (SpongeCommon.post(event)) {
                 cancelRotation = true;
                 toRotation = fromRotation;
             } else {
@@ -422,7 +410,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
         if (PhaseTracker.getInstance().getPhaseContext().isEmpty()) {
             return;
         }
-        SpongeCommonEventFactory.lastAnimationPacketTick = SpongeCommon.getServer().getTickCount();
+        SpongeCommonEventFactory.lastAnimationPacketTick = SpongeCommon.server().getTickCount();
         SpongeCommonEventFactory.lastAnimationPlayer = new WeakReference<>(this.player);
 
         if (!((ServerPlayerGameModeAccessor) this.player.gameMode).accessor$isDestroyingBlock()) {
@@ -450,7 +438,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
                 frame.addContext(EventContextKeys.USED_HAND, handType);
                 final AnimateHandEvent event =
                         SpongeEventFactory.createAnimateHandEvent(frame.currentCause(), handType, (Humanoid) this.player);
-                if (SpongeCommon.postEvent(event)) {
+                if (SpongeCommon.post(event)) {
                     ci.cancel();
                 }
             }
@@ -510,7 +498,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
                         (org.spongepowered.api.world.server.ServerWorld) player.getLevel(),
                         (org.spongepowered.api.world.server.ServerWorld) overworld,
                         (ServerPlayer) player);
-        SpongeCommon.postEvent(event);
+        SpongeCommon.post(event);
         ((PlayerListBridge) this.server.getPlayerList()).bridge$setOriginalDestinationDimension(((ServerLevel) event.originalDestinationWorld()).dimension());
         ((PlayerListBridge) this.server.getPlayerList()).bridge$setNewDestinationDimension(((ServerLevel) event.destinationWorld()).dimension());
         // The key is reset to null in the overwrite
@@ -535,7 +523,7 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
             final ServerSideConnectionEvent.Disconnect event = SpongeEventFactory.createServerSideConnectionEventDisconnect(
                     PhaseTracker.getCauseStackManager().currentCause(), audience, Optional.of(audience), message, message,
                     spongePlayer.connection(), spongePlayer);
-            SpongeCommon.postEvent(event);
+            SpongeCommon.post(event);
             event.audience().ifPresent(a -> a.sendMessage(spongePlayer, event.message()));
         }
 
@@ -572,20 +560,11 @@ public abstract class ServerGamePacketListenerImplMixin implements ConnectionHol
             final ChangeSignEvent event = SpongeEventFactory.createChangeSignEvent(PhaseTracker.getCauseStackManager().currentCause(),
                     originalLinesValue.asImmutable(), newLinesValue,
                     (Sign) blockEntity);
-            final ListValue<Component> toApply = SpongeCommon.postEvent(event) ? originalLinesValue : newLinesValue;
+            final ListValue<Component> toApply = SpongeCommon.post(event) ? originalLinesValue : newLinesValue;
             ((Sign) blockEntity).offer(toApply);
         }
 
         return 0;
     }
 
-    private String[] impl$extractCommandString(final String commandString) {
-        if (commandString.isEmpty()) {
-            return ServerGamePacketListenerImplMixin.IMPL$EMPTY_COMMAND_ARRAY;
-        }
-        if (commandString.startsWith("/")) {
-            return commandString.substring(1).split(" ", 2);
-        }
-        return commandString.split(" ", 2);
-    }
 }

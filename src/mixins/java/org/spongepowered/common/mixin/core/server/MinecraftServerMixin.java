@@ -41,6 +41,7 @@ import net.minecraft.world.level.storage.PrimaryLevelData;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.api.Game;
 import org.spongepowered.api.Sponge;
+import org.spongepowered.api.datapack.DataPackTypes;
 import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.CauseStackManager;
 import org.spongepowered.api.resourcepack.ResourcePack;
@@ -88,8 +89,8 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 
 @Mixin(MinecraftServer.class)
-public abstract class MinecraftServerMixin implements SpongeServer, MinecraftServerBridge,
-        CommandSourceProviderBridge, SubjectProxy, CommandSourceBridge {
+public abstract class MinecraftServerMixin implements SpongeServer, MinecraftServerBridge, CommandSourceProviderBridge, SubjectProxy,
+    CommandSourceBridge {
 
     // @formatter:off
     @Shadow @Final private Map<ResourceKey<Level>, ServerLevel> levels;
@@ -111,7 +112,7 @@ public abstract class MinecraftServerMixin implements SpongeServer, MinecraftSer
 
     @Override
     public Subject subject() {
-        return SpongeCommon.getGame().systemSubject();
+        return SpongeCommon.game().systemSubject();
     }
 
     @Inject(method = "spin", at = @At("TAIL"), locals = LocalCapture.CAPTURE_FAILEXCEPTION)
@@ -344,13 +345,15 @@ public abstract class MinecraftServerMixin implements SpongeServer, MinecraftSer
 
     @Inject(method = "reloadResources", at = @At(value = "HEAD"))
     public void impl$reloadResources(Collection<String> datapacksToLoad, CallbackInfoReturnable<CompletableFuture<Void>> cir) {
-        SpongeDataPackManager.INSTANCE.callRegisterDataPackValueEvents();
-        try {
-            SpongeDataPackManager.INSTANCE.serialize(this.storageSource.getLevelPath(LevelResource.DATAPACK_DIR), datapacksToLoad);
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
+        SpongeDataPackManager.INSTANCE.callRegisterDataPackValueEvents(this.storageSource.getLevelPath(LevelResource.DATAPACK_DIR), datapacksToLoad);
         this.shadow$getPackRepository().reload();
+    }
+
+    @Inject(method = "reloadResources", at = @At(value = "RETURN"))
+    public void impl$serializeDelayedDataPack(Collection<String> datapacksToLoad, CallbackInfoReturnable<CompletableFuture<Void>> cir) {
+        cir.getReturnValue().thenAccept(v -> {
+            SpongeDataPackManager.INSTANCE.serializeDelayedDataPack(DataPackTypes.WORLD);
+        });
     }
 
     @Override
