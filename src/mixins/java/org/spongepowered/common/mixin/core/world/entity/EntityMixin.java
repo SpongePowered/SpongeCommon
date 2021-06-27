@@ -209,6 +209,9 @@ public abstract class EntityMixin implements EntityBridge, PlatformEntityBridge,
     // @formatter:on
 
     @Shadow private int remainingFireTicks;
+
+    @Shadow public abstract boolean isPassenger();
+
     private boolean impl$isConstructing = true;
     private boolean impl$vanishPreventsTargeting = false;
     private boolean impl$isVanished = false;
