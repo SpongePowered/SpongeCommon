@@ -22,34 +22,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.vanilla.launch;
+package org.spongepowered.forge.mixin.core.fml;
 
-import com.google.inject.Stage;
-import net.minecraft.server.Main;
-import org.spongepowered.common.SpongeBootstrap;
-import org.spongepowered.common.launch.Launch;
-import org.spongepowered.vanilla.applaunch.plugin.VanillaPluginPlatform;
+import net.minecraftforge.fml.ModContainer;
+import org.apache.logging.log4j.Logger;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.plugin.PluginContainer;
+import org.spongepowered.plugin.metadata.PluginMetadata;
 
-public final class DedicatedServerLaunch extends VanillaLaunch {
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.Optional;
 
-    protected DedicatedServerLaunch(final VanillaPluginPlatform pluginEngine, final Stage injectionStage) {
-        super(pluginEngine, injectionStage);
-    }
+@Mixin(ModContainer.class)
+public abstract class ModContainerMixin_Forge_SPI implements PluginContainer {
 
-    public static void launch(final VanillaPluginPlatform pluginEngine, final Boolean isDeveloperEnvironment, final String[] args) {
-        final DedicatedServerLaunch launcher = new DedicatedServerLaunch(pluginEngine, isDeveloperEnvironment ? Stage.DEVELOPMENT :
-                Stage.PRODUCTION);
-        Launch.setInstance(launcher);
-        launcher.launchPlatform(args);
+    @Override
+    public PluginMetadata metadata() {
+        // TODO IModInfo -> PluginMetadata
+        return null;
     }
 
     @Override
-    public boolean dedicatedServer() {
-        return true;
+    public Path path() {
+        return null;
     }
 
     @Override
-    protected void performBootstrap(final String[] args) {
-        SpongeBootstrap.perform("Server", () -> Main.main(args));
+    public Logger logger() {
+        return null;
+    }
+
+    @Override
+    public Object instance() {
+        return null;
+    }
+
+    @Override
+    public Optional<URL> locateResource(URL relative) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<InputStream> openResource(URL relative) {
+        return PluginContainer.super.openResource(relative);
     }
 }

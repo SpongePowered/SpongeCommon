@@ -1,0 +1,2 @@
+org.spongepowered.forge.applaunch.discovery.ForgeBootstrap
+org.spongepowered.forge.applaunch.discovery.AddSpongeBackToClasspathModLocator

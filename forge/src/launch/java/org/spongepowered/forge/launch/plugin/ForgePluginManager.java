@@ -22,34 +22,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.vanilla.launch;
+package org.spongepowered.forge.launch.plugin;
 
-import com.google.inject.Stage;
-import net.minecraft.server.Main;
-import org.spongepowered.common.SpongeBootstrap;
-import org.spongepowered.common.launch.Launch;
-import org.spongepowered.vanilla.applaunch.plugin.VanillaPluginPlatform;
+import org.spongepowered.common.launch.plugin.DummyPluginContainer;
+import org.spongepowered.common.launch.plugin.SpongePluginManager;
+import org.spongepowered.plugin.PluginContainer;
 
-public final class DedicatedServerLaunch extends VanillaLaunch {
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Optional;
 
-    protected DedicatedServerLaunch(final VanillaPluginPlatform pluginEngine, final Stage injectionStage) {
-        super(pluginEngine, injectionStage);
-    }
+public final class ForgePluginManager implements SpongePluginManager {
 
-    public static void launch(final VanillaPluginPlatform pluginEngine, final Boolean isDeveloperEnvironment, final String[] args) {
-        final DedicatedServerLaunch launcher = new DedicatedServerLaunch(pluginEngine, isDeveloperEnvironment ? Stage.DEVELOPMENT :
-                Stage.PRODUCTION);
-        Launch.setInstance(launcher);
-        launcher.launchPlatform(args);
+    @Override
+    public Optional<PluginContainer> fromInstance(final Object instance) {
+        return Optional.empty();
     }
 
     @Override
-    public boolean dedicatedServer() {
-        return true;
+    public Optional<PluginContainer> plugin(final String id) {
+        return Optional.empty();
     }
 
     @Override
-    protected void performBootstrap(final String[] args) {
-        SpongeBootstrap.perform("Server", () -> Main.main(args));
+    public Collection<PluginContainer> plugins() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public boolean isLoaded(final String id) {
+        return false;
+    }
+
+    @Override
+    public void addPlugin(final PluginContainer plugin) {
+
+    }
+
+    @Override
+    public void addDummyPlugin(final DummyPluginContainer plugin) {
+
     }
 }

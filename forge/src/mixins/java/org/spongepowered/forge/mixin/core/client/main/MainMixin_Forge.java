@@ -22,34 +22,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.vanilla.launch;
+package org.spongepowered.forge.mixin.core.client.main;
 
-import com.google.inject.Stage;
-import net.minecraft.server.Main;
-import org.spongepowered.common.SpongeBootstrap;
+import net.minecraft.client.main.Main;
+import net.minecraftforge.fml.loading.FMLLoader;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.common.applaunch.plugin.PluginPlatform;
 import org.spongepowered.common.launch.Launch;
-import org.spongepowered.vanilla.applaunch.plugin.VanillaPluginPlatform;
+import org.spongepowered.forge.launch.ForgeLaunch;
+import org.spongepowered.forge.launch.plugin.ForgePluginPlatform;
 
-public final class DedicatedServerLaunch extends VanillaLaunch {
+@Mixin(Main.class)
+public class MainMixin_Forge {
 
-    protected DedicatedServerLaunch(final VanillaPluginPlatform pluginEngine, final Stage injectionStage) {
-        super(pluginEngine, injectionStage);
+    @Inject(method = "<clinit>", at = @At("RETURN"))
+    private static void forge$initLaunch(final CallbackInfo ci) {
+        final String implementationVersion = PluginPlatform.class.getPackage().getImplementationVersion();
+        final ForgePluginPlatform pluginPlatform = new ForgePluginPlatform();
+        pluginPlatform.setVersion(implementationVersion == null ? "dev" : implementationVersion);
+        pluginPlatform.setBaseDirectory(FMLLoader.getGamePath());
+
+        final ForgeLaunch launch = new ForgeLaunch(pluginPlatform);
+        Launch.setInstance(launch);
     }
 
-    public static void launch(final VanillaPluginPlatform pluginEngine, final Boolean isDeveloperEnvironment, final String[] args) {
-        final DedicatedServerLaunch launcher = new DedicatedServerLaunch(pluginEngine, isDeveloperEnvironment ? Stage.DEVELOPMENT :
-                Stage.PRODUCTION);
-        Launch.setInstance(launcher);
-        launcher.launchPlatform(args);
-    }
-
-    @Override
-    public boolean dedicatedServer() {
-        return true;
-    }
-
-    @Override
-    protected void performBootstrap(final String[] args) {
-        SpongeBootstrap.perform("Server", () -> Main.main(args));
-    }
 }

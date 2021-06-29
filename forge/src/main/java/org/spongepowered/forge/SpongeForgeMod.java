@@ -22,34 +22,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.vanilla.launch;
+package org.spongepowered.forge;
 
-import com.google.inject.Stage;
-import net.minecraft.server.Main;
-import org.spongepowered.common.SpongeBootstrap;
-import org.spongepowered.common.launch.Launch;
-import org.spongepowered.vanilla.applaunch.plugin.VanillaPluginPlatform;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-public final class DedicatedServerLaunch extends VanillaLaunch {
+@Mod("spongeforge")
+public class SpongeForgeMod {
 
-    protected DedicatedServerLaunch(final VanillaPluginPlatform pluginEngine, final Stage injectionStage) {
-        super(pluginEngine, injectionStage);
+    private static final Logger LOGGER = LogManager.getLogger();
+
+    public SpongeForgeMod() {
+        final IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        // modBus: add all FML events with it
+        modBus.addListener(this::commonSetup);
+
+        // annotation events, for non-FML things
+        MinecraftForge.EVENT_BUS.register(this);
     }
 
-    public static void launch(final VanillaPluginPlatform pluginEngine, final Boolean isDeveloperEnvironment, final String[] args) {
-        final DedicatedServerLaunch launcher = new DedicatedServerLaunch(pluginEngine, isDeveloperEnvironment ? Stage.DEVELOPMENT :
-                Stage.PRODUCTION);
-        Launch.setInstance(launcher);
-        launcher.launchPlatform(args);
+    private void commonSetup(final FMLCommonSetupEvent event) {
+        // common setup
+        SpongeForgeMod.LOGGER.info("Setting up SpongeForge");
     }
 
-    @Override
-    public boolean dedicatedServer() {
-        return true;
-    }
-
-    @Override
-    protected void performBootstrap(final String[] args) {
-        SpongeBootstrap.perform("Server", () -> Main.main(args));
-    }
 }

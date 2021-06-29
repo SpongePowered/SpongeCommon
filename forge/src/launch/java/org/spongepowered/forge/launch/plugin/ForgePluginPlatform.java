@@ -22,34 +22,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.vanilla.launch;
+package org.spongepowered.forge.launch.plugin;
 
-import com.google.inject.Stage;
-import net.minecraft.server.Main;
-import org.spongepowered.common.SpongeBootstrap;
-import org.spongepowered.common.launch.Launch;
-import org.spongepowered.vanilla.applaunch.plugin.VanillaPluginPlatform;
+import org.apache.logging.log4j.Logger;
+import org.spongepowered.common.applaunch.plugin.PluginPlatform;
 
-public final class DedicatedServerLaunch extends VanillaLaunch {
+import java.nio.file.Path;
+import java.util.List;
 
-    protected DedicatedServerLaunch(final VanillaPluginPlatform pluginEngine, final Stage injectionStage) {
-        super(pluginEngine, injectionStage);
-    }
+public final class ForgePluginPlatform implements PluginPlatform {
 
-    public static void launch(final VanillaPluginPlatform pluginEngine, final Boolean isDeveloperEnvironment, final String[] args) {
-        final DedicatedServerLaunch launcher = new DedicatedServerLaunch(pluginEngine, isDeveloperEnvironment ? Stage.DEVELOPMENT :
-                Stage.PRODUCTION);
-        Launch.setInstance(launcher);
-        launcher.launchPlatform(args);
+    @Override
+    public String version() {
+        return null;
     }
 
     @Override
-    public boolean dedicatedServer() {
-        return true;
+    public void setVersion(String version) {
+
     }
 
     @Override
-    protected void performBootstrap(final String[] args) {
-        SpongeBootstrap.perform("Server", () -> Main.main(args));
+    public Logger logger() {
+        return null;
+    }
+
+    @Override
+    public boolean vanilla() {
+        return false;
+    }
+
+    @Override
+    public Path baseDirectory() {
+        return null;
+    }
+
+    @Override
+    public void setBaseDirectory(Path baseDirectory) {
+
+    }
+
+    @Override
+    public List<Path> pluginDirectories() {
+        return null;
+    }
+
+    @Override
+    public void setPluginDirectories(List<Path> pluginDirectories) {
+
     }
 }
