@@ -32,6 +32,11 @@ import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.CauseStackManager;
 import org.spongepowered.api.event.cause.entity.SpawnType;
 import org.spongepowered.api.event.entity.SpawnEntityEvent;
+import org.spongepowered.api.event.item.inventory.container.ClickContainerEvent;
+import org.spongepowered.api.item.inventory.Container;
+import org.spongepowered.api.item.inventory.ItemStackSnapshot;
+import org.spongepowered.api.item.inventory.Slot;
+import org.spongepowered.api.item.inventory.transaction.SlotTransaction;
 import org.spongepowered.api.util.Tuple;
 import org.spongepowered.api.world.BlockChangeFlag;
 import org.spongepowered.common.block.SpongeBlockSnapshot;
@@ -59,6 +64,7 @@ import net.minecraft.world.level.storage.loot.LootContext;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -302,5 +308,20 @@ public interface PhaseStateProxy<C extends PhaseContext<C>> {
 
     default void associateScheduledTickUpdate(final ServerLevel level, final TickNextTickData<?> entry) {
         this.getState().associateScheduledTickUpdate(this.asContext(), level, entry);
+    }
+
+    default Supplier<ServerLevel> attemptWorldKey() {
+        return this.getState().attemptWorldKey(this.asContext());
+    }
+
+    default @Nullable ClickContainerEvent createInventoryEvent(final net.minecraft.server.level.ServerPlayer playerMP,
+        final Container openContainer, final Transaction<ItemStackSnapshot> transaction,
+        final List<SlotTransaction> slotTransactions, final List<org.spongepowered.api.entity.Entity> capturedEntities,
+        final int usedButton, final @Nullable Slot slot) {
+        return this.getState().createInventoryEvent(this.asContext(), playerMP, openContainer, transaction, slotTransactions, capturedEntities, usedButton, slot);
+    }
+
+    default void restoreClickContainerEvent(final ClickContainerEvent event) {
+        this.getState().restoreClickContainerEvent(this.asContext(), event);
     }
 }

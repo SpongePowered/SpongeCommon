@@ -24,17 +24,16 @@
  */
 package org.spongepowered.common.event.tracking.phase.general;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongepowered.common.util.PrettyPrinter;
-import org.spongepowered.common.bridge.world.inventory.container.TrackedInventoryBridge;
 import org.spongepowered.common.event.tracking.IPhaseState;
 import org.spongepowered.common.event.tracking.PhaseTracker;
+import org.spongepowered.common.util.PrettyPrinter;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 
 public class CommandPhaseContext extends GeneralPhaseContext<CommandPhaseContext> {
 
     @Nullable String command;
-    private @Nullable TrackedInventoryBridge inventory;
 
     CommandPhaseContext(final IPhaseState<CommandPhaseContext> state, PhaseTracker tracker) {
         super(state, tracker);
@@ -42,14 +41,13 @@ public class CommandPhaseContext extends GeneralPhaseContext<CommandPhaseContext
 
     @Override
     public boolean hasCaptures() {
-        return (this.inventory != null && !this.inventory.bridge$getCapturedSlotTransactions().isEmpty()) || super.hasCaptures();
+        return super.hasCaptures();
     }
 
     @Override
     protected void reset() {
         super.reset();
         this.command = null;
-        this.inventory = null;
     }
 
     public CommandPhaseContext command(final String command) {
@@ -62,15 +60,7 @@ public class CommandPhaseContext extends GeneralPhaseContext<CommandPhaseContext
         final String s = String.format("%1$" + indent + "s", "");
         super.printCustom(printer, indent)
             .add(s + "- %s: %s", "Command", this.command == null ? "empty command" : this.command);
-        if (this.inventory != null) {
-            printer.add(s + "-%s: %s", "Inventory", this.inventory.bridge$getCapturedSlotTransactions());
-        }
         return printer;
-    }
-
-    public CommandPhaseContext inventory(final TrackedInventoryBridge inventory) {
-        this.inventory = inventory;
-        return this;
     }
 
     // Maybe we could provide the command?
