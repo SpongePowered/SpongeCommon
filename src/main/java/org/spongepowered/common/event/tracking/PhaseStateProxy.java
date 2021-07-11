@@ -321,7 +321,4 @@ public interface PhaseStateProxy<C extends PhaseContext<C>> {
         return this.getState().createInventoryEvent(this.asContext(), playerMP, openContainer, transaction, slotTransactions, capturedEntities, usedButton, slot);
     }
 
-    default void restoreClickContainerEvent(final ClickContainerEvent event) {
-        this.getState().restoreClickContainerEvent(this.asContext(), event);
-    }
 }
