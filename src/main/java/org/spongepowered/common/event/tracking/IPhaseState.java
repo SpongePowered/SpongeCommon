@@ -408,7 +408,7 @@ public interface IPhaseState<C extends PhaseContext<C>> {
 
     default @Nullable ClickContainerEvent createInventoryEvent(
         final C context, final Cause cause,
-        final ServerPlayer playerMP, final Container openContainer,
+        final ServerPlayer serverPlayer, final Container openContainer,
         final Transaction<ItemStackSnapshot> transaction,
         final List<SlotTransaction> slotTransactions, final List<org.spongepowered.api.entity.Entity> capturedEntities,
         final int usedButton, final @Nullable Slot slot
