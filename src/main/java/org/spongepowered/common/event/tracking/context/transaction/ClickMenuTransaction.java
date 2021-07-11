@@ -66,7 +66,7 @@ public class ClickMenuTransaction extends ContainerBasedTransaction {
         }
         final ItemStackSnapshot resultingCursor = ItemStackUtil.snapshotOf(this.player.inventory.getCarried());
         final Transaction<ItemStackSnapshot> cursorTransaction = new Transaction<>(this.cursor, resultingCursor);
-        final @Nullable ClickContainerEvent event = context.createInventoryEvent(cause, this.player, (Container) this.menu,
+        final @Nullable ClickContainerEvent event = context.createContainerEvent(cause, this.player, (Container) this.menu,
             cursorTransaction, slotTransactions, entities, this.buttonNum, this.slot);
 
         // The client sends several packets all at once for drag events we only care about the last one.

@@ -62,7 +62,7 @@ public final class DropItemOutsideWindowState extends BasicInventoryPacketState 
     }
 
     @Override
-    public ClickContainerEvent createInventoryEvent(
+    public ClickContainerEvent createContainerEvent(
             final InventoryPacketContext ctx, final Cause cause, final net.minecraft.server.level.ServerPlayer serverPlayer,
             final Container openContainer,
             final Transaction<ItemStackSnapshot> transaction,

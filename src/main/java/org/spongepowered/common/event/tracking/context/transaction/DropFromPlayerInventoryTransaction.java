@@ -83,7 +83,7 @@ public class DropFromPlayerInventoryTransaction extends ContainerBasedTransactio
 
         final Transaction<ItemStackSnapshot> cursorTransaction = new Transaction<>(this.originalCursor, this.originalCursor);
 
-        final @Nullable ClickContainerEvent event = context.createInventoryEvent(cause, this.player, (Container) this.menu,
+        final @Nullable ClickContainerEvent event = context.createContainerEvent(cause, this.player, (Container) this.menu,
                 cursorTransaction, slotTransactions, entities, dropAll ? 1 : 0, this.slot);
 
         return Optional.of(event);

@@ -47,7 +47,7 @@ public final class DropItemWithHotkeyState extends BasicInventoryPacketState {
     }
 
     @Override
-    public ClickContainerEvent.Drop createInventoryEvent(
+    public ClickContainerEvent.Drop createContainerEvent(
         final InventoryPacketContext context, final Cause cause,
         final net.minecraft.server.level.ServerPlayer serverPlayer,
         final Container openContainer, final Transaction<ItemStackSnapshot> transaction,
