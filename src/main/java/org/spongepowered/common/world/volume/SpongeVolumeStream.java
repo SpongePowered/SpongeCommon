@@ -25,6 +25,7 @@
 package org.spongepowered.common.world.volume;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.event.EventContextKeys;
 import org.spongepowered.api.world.volume.MutableVolume;
 import org.spongepowered.api.world.volume.Volume;
 import org.spongepowered.api.world.volume.stream.VolumeCollector;
@@ -195,7 +196,11 @@ public class SpongeVolumeStream<V extends Volume, T> implements VolumeStream<V, 
 
     @Override
     public <W extends MutableVolume> void apply(final VolumeCollector<W, T, ?> collector) {
-        try (final PhaseContext<@NonNull ?> context = PluginPhase.State.BLOCK_WORKER.createPhaseContext(PhaseTracker.SERVER)) {
+        try (final PhaseContext<@NonNull ?> context = PluginPhase.State.VOLUME_STREAM_APPLICATION
+            .createPhaseContext(PhaseTracker.getInstance())
+            .setVolumeStream(this)
+            .spawnType(() -> PhaseTracker.getCauseStackManager().context(EventContextKeys.SPAWN_TYPE).orElse(null))
+        ) {
             context.buildAndSwitch();
             this.stream.forEach(element -> {
                 final W targetVolume = collector.target().get();
