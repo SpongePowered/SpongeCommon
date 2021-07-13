@@ -26,8 +26,11 @@ package org.spongepowered.common.world.schematic;
 
 import com.mojang.datafixers.DataFixer;
 import io.leangen.geantyref.TypeToken;
-import net.minecraft.data.BuiltinRegistries;
 import net.minecraft.SharedConstants;
+import net.minecraft.data.BuiltinRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.util.datafix.DataFixTypes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
@@ -56,6 +59,7 @@ import org.spongepowered.api.world.volume.block.BlockVolume;
 import org.spongepowered.common.SpongeCommon;
 import org.spongepowered.common.block.BlockStateSerializerDeserializer;
 import org.spongepowered.common.block.entity.SpongeBlockEntityArchetypeBuilder;
+import org.spongepowered.common.data.persistence.NBTTranslator;
 import org.spongepowered.common.data.persistence.schematic.SchematicUpdater1_to_2;
 import org.spongepowered.common.data.persistence.schematic.SchematicUpdater2_to_3;
 import org.spongepowered.common.entity.SpongeEntityArchetypeBuilder;
@@ -123,24 +127,28 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
         final int dataVersion = unprocessed.getInt(Constants.Sponge.Schematic.DATA_VERSION).get();
         // DataFixer will be able to upgrade entity and tile entity data if and only if we're running a valid server and
         // the data version is outdated.
-        // Don't run fixers for now
         final boolean needsFixers = dataVersion < SharedConstants.getCurrentVersion().getWorldVersion() && SchematicTranslator.VANILLA_FIXER != null;
-        // TODO - DataFix, it's complicated....
-        final DataView updatedView = unprocessed;
 
-        final @Nullable DataView metadata = updatedView.getView(Constants.Sponge.Schematic.METADATA).orElse(null);
-        if (metadata != null) {
-            final Optional<DataView> dot_data = metadata.getView(DataQuery.of("."));
-            if (dot_data.isPresent()) {
-                final DataView data = dot_data.get();
+
+        final DataView updatedView;
+        if (needsFixers) {
+            final CompoundTag compound = NBTTranslator.INSTANCE.translate(unprocessed);
+            final CompoundTag updated = NbtUtils.update(SchematicTranslator.VANILLA_FIXER, DataFixTypes.CHUNK, compound, dataVersion);
+            updatedView = NBTTranslator.INSTANCE.translate(updated);
+        } else {
+            updatedView = unprocessed;
+        }
+
+        final SpongeSchematicBuilder builder = new SpongeSchematicBuilder();
+        final Optional<DataView> metadataView = updatedView.getView(Constants.Sponge.Schematic.METADATA);
+        metadataView.ifPresent(metadata -> {
+            metadata.getView(DataQuery.of(".")).ifPresent(data -> {
                 for (final DataQuery key : data.keys(false)) {
                     if (!metadata.contains(key)) {
                         metadata.set(key, data.get(key).get());
                     }
                 }
-            }
-        }
-        if (metadata != null) {
+            });
             final String schematicName = metadata.getString(Constants.Sponge.Schematic.NAME).orElse("unknown");
             metadata.getStringList(Constants.Sponge.Schematic.REQUIRED_MODS).ifPresent(mods -> {
                 for (final String modId : mods) {
@@ -154,9 +162,13 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
                     }
                 }
             });
-        }
+            final DataContainer meta = DataContainer.createNew(DataView.SafetyMode.NO_DATA_CLONED);
+            for (final DataQuery key : metadata.keys(false)) {
+                meta.set(key, metadata.get(key).get());
+            }
+            builder.metadata(meta);
+        });
 
-        // TODO error handling for these optionals
         final int width = updatedView.getShort(Constants.Sponge.Schematic.WIDTH)
             .orElseThrow(() -> new InvalidDataException("Missing value for: " + Constants.Sponge.Schematic.WIDTH));
         final int height = updatedView.getShort(Constants.Sponge.Schematic.HEIGHT)
@@ -184,7 +196,6 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
             new Vector3i(-xOffset, -yOffset, -zOffset), new Vector3i(width, height, length),
             Sponge.game().registries()
         );
-        final SpongeSchematicBuilder builder = new SpongeSchematicBuilder();
 
         updatedView.getView(Constants.Sponge.Schematic.BLOCK_CONTAINER)
             .ifPresent(
@@ -211,15 +222,6 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
             .filter(Optional::isPresent)
             .map(Optional::get)
             .forEach(archetypeVolume::addEntity);
-
-
-        if (metadata != null) {
-            final DataContainer meta = DataContainer.createNew(DataView.SafetyMode.NO_DATA_CLONED);
-            for (final DataQuery key : metadata.keys(false)) {
-                meta.set(key, metadata.get(key).get());
-            }
-            builder.metadata(meta);
-        }
 
         builder.volume(archetypeVolume);
         return builder.build();
@@ -464,12 +466,20 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
             );
 
             final List<DataView> blockEntities = schematic.blockEntityArchetypes().entrySet().stream().map(entry -> {
+                final DataContainer container = DataContainer.createNew(DataView.SafetyMode.NO_DATA_CLONED);
                 final Vector3i pos = entry.getKey();
                 final BlockEntityArchetype archetype = entry.getValue();
                 final DataContainer entityData = archetype.blockEntityData();
                 final int[] apos = new int[]{pos.x() - xMin, pos.y() - yMin, pos.z() - zMin};
-                entityData.set(Constants.Sponge.Schematic.BLOCKENTITY_POS, apos);
-                return entityData;
+                container.set(Constants.Sponge.Schematic.BLOCKENTITY_POS, apos);
+                container.set(Constants.Sponge.Schematic.BLOCKENTITY_DATA, entityData);
+                final ResourceKey key = archetype.blockEntityType().key(RegistryTypes.BLOCK_ENTITY_TYPE);
+                container.set(Constants.Sponge.Schematic.ENTITIES_ID, key.asString());
+                final String namespace = key.namespace();
+                if (!ResourceKey.MINECRAFT_NAMESPACE.equals(namespace)) {
+                    requiredMods.add(namespace);
+                }
+                return container;
             }).collect(Collectors.toList());
 
             blockData.set(Constants.Sponge.Schematic.BLOCKENTITY_CONTAINER, blockEntities);
@@ -509,14 +519,21 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
         }
 
         final List<DataView> entities = schematic.entityArchetypesByPosition().stream().map(entry -> {
-            final DataContainer entityData = entry.archetype().entityData();
+            final DataContainer container = DataContainer.createNew();
 
             final List<Double> entityPosition = new ArrayList<>();
             entityPosition.add(entry.position().x());
             entityPosition.add(entry.position().y());
             entityPosition.add(entry.position().z());
-            entityData.set(Constants.Sponge.Schematic.ENTITIES_POS, entityPosition);
-            return entityData;
+            container.set(Constants.Sponge.Schematic.ENTITIES_POS, entityPosition);
+            final ResourceKey key = entry.archetype().type().key(RegistryTypes.ENTITY_TYPE);
+            if (!ResourceKey.MINECRAFT_NAMESPACE.equals(key.namespace())) {
+                requiredMods.add(key.namespace());
+            }
+            container.set(Constants.Sponge.Schematic.ENTITIES_ID, key.toString());
+            final DataContainer entityData = entry.archetype().entityData();
+            container.set(Constants.Sponge.Schematic.BLOCKENTITY_DATA, entityData);
+            return container;
         }).collect(Collectors.toList());
 
         data.set(Constants.Sponge.Schematic.ENTITIES, entities);
@@ -547,7 +564,7 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
                 .findValueKey(parentGetter.apply(entry.getKey()))
                 .orElseThrow(() -> new IllegalStateException(
                     "Somehow have a BlockState that is not registered in the global BlockType registry"));
-            if (!"minecraft".equals(blockKey.namespace())) {
+            if (!ResourceKey.MINECRAFT_NAMESPACE.equals(blockKey.namespace())) {
                 requiredMods.add(blockKey.namespace());
             }
         });
