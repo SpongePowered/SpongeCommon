@@ -135,7 +135,7 @@ final class TransformationTest {
         final Transformation transformation = transformationBuilder.rotate(rotation, axis).origin(origin).build();
 
         // then perform the transformation
-        final Vector3d result = transformation.apply(original);
+        final Vector3d result = transformation.transformPosition(original);
 
         Assertions.assertEquals(expected, result, "Did not get expected rotation.");
     }
@@ -190,7 +190,7 @@ final class TransformationTest {
         final Transformation transformation = transformationBuilder.mirror(Axis.X).build();
 
         // then perform the transformation
-        final Vector3d result = transformation.apply(original);
+        final Vector3d result = transformation.transformPosition(original);
 
         Assertions.assertEquals(expected, result, "Did not get expected mirroring.");
     }
@@ -205,7 +205,7 @@ final class TransformationTest {
         final Transformation transformation = transformationBuilder.translate(Vector3d.ONE).build();
 
         // then perform the transformation
-        final Vector3d result = transformation.apply(original);
+        final Vector3d result = transformation.transformPosition(original);
 
         Assertions.assertEquals(expected, result, "Did not get expected rotation.");
     }
@@ -236,7 +236,7 @@ final class TransformationTest {
                 .build();
 
         // then perform the transformation
-        final Vector3d result = transformation.apply(original);
+        final Vector3d result = transformation.transformPosition(original);
 
         Assertions.assertEquals(expected, result, "Did not get expected result.");
     }

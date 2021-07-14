@@ -25,7 +25,6 @@
 package org.spongepowered.common.util.transformation;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.spongepowered.api.util.Angle;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.math.GenericMath;
 import org.spongepowered.math.matrix.Matrix4d;
@@ -36,11 +35,14 @@ public final class SpongeTransformation implements Transformation {
 
     private final Vector3d origin;
     private final Matrix4d transformation;
+    private final Matrix4d directionTransformation;
     private final boolean performRounding;
 
-    public SpongeTransformation(final Vector3d origin, final Matrix4d transformation, final boolean performRounding) {
+    public SpongeTransformation(final Vector3d origin, final Matrix4d transformation, final Matrix4d directionTransformation,
+            final boolean performRounding) {
         this.origin = origin;
         this.transformation = transformation;
+        this.directionTransformation = directionTransformation;
         this.performRounding = performRounding;
     }
 
@@ -50,9 +52,22 @@ public final class SpongeTransformation implements Transformation {
     }
 
     @Override
-    public @NonNull Vector3d apply(final @NonNull Vector3d original) {
-        final Vector3d displaced = original.sub(this.origin);
-        final Vector4d transformed = this.transformation.transform(displaced.toVector4(1));
+    public @NonNull Vector3d transformPosition(final @NonNull Vector3d original) {
+        final Vector4d transformed = this.transformation.transform(original.toVector4(1));
+        if (this.performRounding) {
+            return new Vector3d(
+                    GenericMath.round(transformed.x(), 14),
+                    GenericMath.round(transformed.y(), 14),
+                    GenericMath.round(transformed.z(), 14)
+            );
+        } else {
+            return transformed.toVector3();
+        }
+    }
+
+    @Override
+    public @NonNull Vector3d transformDirection(final @NonNull Vector3d original) {
+        final Vector4d transformed = this.directionTransformation.transform(original.normalize().toVector4(1));
         final Vector3d result;
         if (this.performRounding) {
             result = new Vector3d(
@@ -63,7 +78,22 @@ public final class SpongeTransformation implements Transformation {
         } else {
             result = transformed.toVector3();
         }
-        return result.add(this.origin);
+        return result.normalize();
+    }
+
+    @Override
+    public @NonNull Matrix4d positionTransformationMatrix() {
+        return this.transformation;
+    }
+
+    @Override
+    public @NonNull Matrix4d directionTransformationMatrix() {
+        return this.directionTransformation;
+    }
+
+    @Override
+    public @NonNull Vector3d origin() {
+        return this.origin;
     }
 
 }

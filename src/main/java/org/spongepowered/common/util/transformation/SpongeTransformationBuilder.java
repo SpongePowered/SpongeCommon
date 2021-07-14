@@ -38,6 +38,7 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
     // x, y, z, w
     private Vector3d origin;
     private Matrix4d transformation;
+    private Matrix4d directionTransformation;
     private boolean performRounding;
 
     public SpongeTransformationBuilder() {
@@ -47,6 +48,7 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
     @Override
     public @NonNull SpongeTransformationBuilder reset() {
         this.transformation = Matrix4d.IDENTITY;
+        this.directionTransformation = Matrix4d.IDENTITY;
         this.origin = Vector3d.ZERO;
         this.performRounding = true;
         return this;
@@ -65,13 +67,17 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
             return this;
         }
 
-        this.transformation = this.transformation.rotate(Quaterniond.fromAngleDegAxis(rotation.angle(), axis.toVector3d()));
+        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(rotation.angle(), axis.toVector3d());
+        this.transformation = this.transformation.rotate(rotationQuaternion);
+        this.directionTransformation = this.directionTransformation.rotate(rotationQuaternion);
         return this;
     }
 
     @Override
     public @NonNull SpongeTransformationBuilder mirror(final @NonNull Axis axis) {
-        this.transformation = this.transformation.scale(Vector4d.ONE.sub(axis.toVector3d().toVector4(0).mul(2)));
+        final Vector4d scale = Vector4d.ONE.sub(axis.toVector3d().toVector4(0).mul(2));
+        this.transformation = this.transformation.scale(scale);
+        this.directionTransformation = this.directionTransformation.scale(scale);
         return this;
     }
 
@@ -89,7 +95,10 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
 
     @Override
     public @NonNull SpongeTransformation build() {
-        return new SpongeTransformation(this.origin, this.transformation, this.performRounding);
+        return new SpongeTransformation(this.origin,
+                this.transformation.mul(Matrix4d.createTranslation(this.origin.mul(-1))).translate(this.origin),
+                this.directionTransformation,
+                this.performRounding);
     }
 
 }
