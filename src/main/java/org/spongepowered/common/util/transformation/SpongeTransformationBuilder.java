@@ -63,11 +63,11 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
     @Override
     public @NonNull SpongeTransformationBuilder rotate(final @NonNull Rotation rotation, final @NonNull Axis axis) {
         // We're doing nothing here.
-        if (rotation.angle() == 0) {
+        if (rotation.angle().degrees() == 0) {
             return this;
         }
 
-        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(rotation.angle(), axis.toVector3d());
+        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(rotation.angle().degrees(), axis.toVector3d());
         this.transformation = this.transformation.rotate(rotationQuaternion);
         this.directionTransformation = this.directionTransformation.rotate(rotationQuaternion);
         return this;

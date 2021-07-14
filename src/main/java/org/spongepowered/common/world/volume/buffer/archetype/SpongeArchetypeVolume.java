@@ -325,7 +325,7 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
                                 final boolean isPainting = e.type() == EntityTypes.PAINTING.get();
                                 final int facing = compound.getInt("Facing");
                                 final Direction existing = isPainting ? DirectionUtil.fromHorizontalHanging(facing) : DirectionUtil.fromHanging(facing);
-                                final Quaterniond q = Quaterniond.fromAngleDegAxis(rotation.angle(), 0, 1, 0);
+                                final Quaterniond q = Quaterniond.fromAngleDegAxis(rotation.angle().degrees(), 0, 1, 0);
                                 final Vector3d v = q.rotate(existing.asBlockOffset().toDouble());
                                 final Direction closest = isPainting ? Direction.closestHorizontal(v) : Direction.closest(v);
                                 compound.putByte("Facing", (byte) (isPainting ? DirectionUtil.toHorizontalHanging(closest) : DirectionUtil.toHanging(closest)));
