@@ -63,6 +63,27 @@ final class TransformationTest {
         );
     }
 
+    private static Stream<Arguments> testRotatingAroundOrigin90DegreesAroundXAxis() {
+        return Stream.of(
+                Arguments.of(new Vector3d( 1, 0,  0), new Vector3d( 1, 0,  0)),
+                Arguments.of(new Vector3d( 0, 1,  0), new Vector3d( 0, 0,  1)),
+                Arguments.of(new Vector3d( 1, 1,  0), new Vector3d( 1, 0,  1)),
+                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d(-1, 0,  1)),
+                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( 0,-1,  1)),
+                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d( 0, 1,  1))
+        );
+    }
+
+    private static Stream<Arguments> testRotatingAroundOrigin90DegreesAroundZAxis() {
+        return Stream.of(
+                Arguments.of(new Vector3d( 1, 0,  0), new Vector3d( 0, 1,  0)),
+                Arguments.of(new Vector3d( 1, 1,  0), new Vector3d(-1, 1,  0)),
+                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d(-1,-1,  0)),
+                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d(-1, 0,  1)),
+                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d(-1, 0, -1))
+        );
+    }
+
     private static Stream<Arguments> testMirrorInXDirection() {
         return Stream.of(
                 Arguments.of(new Vector3d( 1, 0,  0), new Vector3d(-1, 0,  0)),
@@ -101,18 +122,17 @@ final class TransformationTest {
                 });
     }
 
-    @ParameterizedTest
-    @MethodSource
-    void testRotatingAroundOrigin90DegreesAroundYAxis(final Vector3d original, final Vector3d expected) {
+    private void performRotationTest(final Rotation rotation, final Axis axis, final Vector3d original, final Vector3d expected) {
+        this.performRotationTest(rotation, axis, original, expected, Vector3d.ZERO);
+    }
+
+    private void performRotationTest(
+            final Rotation rotation, final Axis axis, final Vector3d original, final Vector3d expected, final Vector3d origin) {
         // given this builder
         final SpongeTransformationBuilder transformationBuilder = new SpongeTransformationBuilder();
 
-        // and this rotation
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
-        Mockito.when(mockRotation.angle()).thenReturn(90);
-
         // when rotating by 90 degrees
-        final Transformation transformation = transformationBuilder.rotate(mockRotation, Axis.Y).build();
+        final Transformation transformation = transformationBuilder.rotate(rotation, axis).origin(origin).build();
 
         // then perform the transformation
         final Vector3d result = transformation.apply(original);
@@ -122,22 +142,42 @@ final class TransformationTest {
 
     @ParameterizedTest
     @MethodSource
+    void testRotatingAroundOrigin90DegreesAroundYAxis(final Vector3d original, final Vector3d expected) {
+        // and this rotation
+        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        Mockito.when(mockRotation.angle()).thenReturn(90);
+
+        this.performRotationTest(mockRotation, Axis.Y, original, expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void testRotatingAroundOrigin90DegreesAroundXAxis(final Vector3d original, final Vector3d expected) {
+        // and this rotation
+        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        Mockito.when(mockRotation.angle()).thenReturn(90);
+
+        this.performRotationTest(mockRotation, Axis.X, original, expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void testRotatingAroundOrigin90DegreesAroundZAxis(final Vector3d original, final Vector3d expected) {
+        // and this rotation
+        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        Mockito.when(mockRotation.angle()).thenReturn(90);
+
+        this.performRotationTest(mockRotation, Axis.Z, original, expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource
     void testRotatingAroundOrigin180DegreesAroundYAxis(final Vector3d original, final Vector3d expected) {
-        // given this builder
-        final SpongeTransformationBuilder transformationBuilder = new SpongeTransformationBuilder();
-
-
         // and this rotation
         final Rotation mockRotation = Mockito.mock(Rotation.class);
         Mockito.when(mockRotation.angle()).thenReturn(180);
 
-        // when rotating by 180 degrees
-        final Transformation transformation = transformationBuilder.rotate(mockRotation, Axis.Y).build();
-
-        // then perform the transformation
-        final Vector3d result = transformation.apply(original);
-
-        Assertions.assertEquals(expected, result, "Did not get expected rotation.");
+        this.performRotationTest(mockRotation, Axis.Y, original, expected);
     }
 
     @ParameterizedTest
@@ -173,23 +213,10 @@ final class TransformationTest {
     @ParameterizedTest
     @MethodSource
     void testRotatingAroundOrigin90DegreesAroundYAxisAtDisplacedOrigin(final Vector3d original, final Vector3d expected, final Vector3d origin) {
-        // given this builder
-        final SpongeTransformationBuilder transformationBuilder = new SpongeTransformationBuilder();
-
-        // and this rotation
         final Rotation mockRotation = Mockito.mock(Rotation.class);
         Mockito.when(mockRotation.angle()).thenReturn(90);
 
-        // around this origin
-        transformationBuilder.origin(origin);
-
-        // when rotating by 90 degrees
-        final Transformation transformation = transformationBuilder.rotate(mockRotation, Axis.Y).build();
-
-        // then perform the transformation
-        final Vector3d result = transformation.apply(original);
-
-        Assertions.assertEquals(expected, result, "Did not get expected rotation.");
+        this.performRotationTest(mockRotation, Axis.Y, original, expected, origin);
     }
 
     @ParameterizedTest

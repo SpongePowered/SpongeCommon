@@ -25,6 +25,7 @@
 package org.spongepowered.common.util.transformation;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.util.Angle;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.math.GenericMath;
 import org.spongepowered.math.matrix.Matrix4d;
@@ -55,9 +56,9 @@ public final class SpongeTransformation implements Transformation {
         final Vector3d result;
         if (this.performRounding) {
             result = new Vector3d(
-                    GenericMath.round(transformed.x(), 15),
-                    GenericMath.round(transformed.y(), 15),
-                    GenericMath.round(transformed.z(), 15)
+                    GenericMath.round(transformed.x(), 14),
+                    GenericMath.round(transformed.y(), 14),
+                    GenericMath.round(transformed.z(), 14)
             );
         } else {
             result = transformed.toVector3();
