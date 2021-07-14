@@ -71,6 +71,11 @@ class VolumeStreamApplicationState extends PluginPhaseState<VolumeStreamApplicat
         return context.spawnTypeSupplier;
     }
 
+    @Override
+    public boolean isApplyingStreams() {
+        return true;
+    }
+
     public static class Context extends PluginPhaseContext<Context> {
 
         @MonotonicNonNull VolumeStream<@NonNull ?, ?> stream;

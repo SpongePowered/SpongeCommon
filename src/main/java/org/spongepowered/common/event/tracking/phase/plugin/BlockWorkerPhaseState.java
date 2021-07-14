@@ -60,13 +60,18 @@ public class BlockWorkerPhaseState extends BasicPluginState {
         return SpawnTypes.PLUGIN;
     }
 
+    @Override
+    public boolean isApplyingStreams() {
+        return true;
+    }
+
     public @Nullable PhaseContext<@NonNull ?> switchIfNecessary(final PhaseTracker server) {
         final PhaseTracker instance = PhaseTracker.getInstance();
         if (!server.onSidedThread()) {
             return null;
         }
         final IPhaseState<@NonNull ?> currentState = instance.getCurrentState();
-        if (this == currentState || currentState == PluginPhase.State.VOLUME_STREAM_APPLICATION)  {
+        if (currentState.isApplyingStreams())  {
             return null;
         }
         return this.createPhaseContext(server);
