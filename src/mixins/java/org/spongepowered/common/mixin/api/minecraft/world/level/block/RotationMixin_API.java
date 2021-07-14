@@ -49,16 +49,14 @@ public abstract class RotationMixin_API implements org.spongepowered.api.util.ro
     @Override
     public Angle angle() {
         if (this.impl$angle == null) {
-            if ((Rotation) (Object) this == Rotation.NONE) {
-                this.impl$angle = Angle.fromDegrees(0);
-            } else if ((Rotation) (Object) this == Rotation.CLOCKWISE_90) {
+            if ((Rotation) (Object) this == Rotation.CLOCKWISE_90) {
                 this.impl$angle = Angle.fromDegrees(90);
             } else if ((Rotation) (Object) this == Rotation.CLOCKWISE_180) {
                 this.impl$angle = Angle.fromDegrees(180);
             } else if ((Rotation) (Object) this == Rotation.COUNTERCLOCKWISE_90) {
                 this.impl$angle = Angle.fromDegrees(270);
             } else {
-                this.impl$angle = Angle.fromDegrees(0); // ???? who the hell adds a new rotation?
+                this.impl$angle = Angle.fromDegrees(0); // Either NONE or someone has tried to extend the enum for some reason.
             }
         }
         return this.impl$angle;
