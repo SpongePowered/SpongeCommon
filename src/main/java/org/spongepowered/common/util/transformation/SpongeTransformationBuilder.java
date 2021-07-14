@@ -25,6 +25,7 @@
 package org.spongepowered.common.util.transformation;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.util.Axis;
 import org.spongepowered.api.util.rotation.Rotation;
 import org.spongepowered.api.util.transformation.Transformation;
@@ -33,6 +34,8 @@ import org.spongepowered.math.matrix.Matrix4d;
 import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector4d;
 
+import java.util.Objects;
+
 public final class SpongeTransformationBuilder implements Transformation.Builder {
 
     // x, y, z, w
@@ -40,6 +43,10 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
     private Matrix4d transformation;
     private Matrix4d directionTransformation;
     private boolean performRounding;
+
+    private @Nullable Rotation rotation;
+    private boolean flipx;
+    private boolean flipz;
 
     public SpongeTransformationBuilder() {
         this.reset();
@@ -51,6 +58,9 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
         this.directionTransformation = Matrix4d.IDENTITY;
         this.origin = Vector3d.ZERO;
         this.performRounding = true;
+        this.rotation = null;
+        this.flipx = false;
+        this.flipz = false;
         return this;
     }
 
@@ -61,23 +71,35 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
     }
 
     @Override
-    public @NonNull SpongeTransformationBuilder rotate(final @NonNull Rotation rotation, final @NonNull Axis axis) {
-        // We're doing nothing here.
-        if (rotation.angle().degrees() == 0) {
-            return this;
-        }
-
-        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(rotation.angle().degrees(), axis.toVector3d());
+    public @NonNull SpongeTransformationBuilder rotate(final @NonNull Rotation rotation) {
+        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(rotation.angle().degrees(), Axis.Y.toVector3d());
         this.transformation = this.transformation.rotate(rotationQuaternion);
         this.directionTransformation = this.directionTransformation.rotate(rotationQuaternion);
+        if (this.rotation == null) {
+            this.rotation = rotation;
+        } else {
+            this.rotation = this.rotation.and(rotation);
+        }
+        if ((this.flipx ^ this.flipz) && rotation.angle().degrees() % 180 == 90) {
+            // flip the mirror if we only have one
+            this.flipz = this.flipx;
+            this.flipx = !this.flipx;
+        }
         return this;
     }
 
     @Override
     public @NonNull SpongeTransformationBuilder mirror(final @NonNull Axis axis) {
+        if (Objects.requireNonNull(axis) == Axis.Y) {
+            throw new IllegalArgumentException("The Y direction cannot be mirrored.");
+        }
         final Vector4d scale = Vector4d.ONE.sub(axis.toVector3d().toVector4(0).mul(2));
         this.transformation = this.transformation.scale(scale);
         this.directionTransformation = this.directionTransformation.scale(scale);
+
+        // Flip the x or z mirror if that's the axis.
+        this.flipx = this.flipx ^ axis == Axis.X;
+        this.flipz = this.flipz ^ axis == Axis.Z;
         return this;
     }
 
@@ -98,7 +120,10 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
         return new SpongeTransformation(this.origin,
                 this.transformation.mul(Matrix4d.createTranslation(this.origin.mul(-1))).translate(this.origin),
                 this.directionTransformation,
-                this.performRounding);
+                this.performRounding,
+                this.rotation == null ? ((Rotation) (Object) net.minecraft.world.level.block.Rotation.NONE) : this.rotation,
+                this.flipx,
+                this.flipz);
     }
 
 }

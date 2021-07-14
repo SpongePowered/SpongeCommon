@@ -25,11 +25,16 @@
 package org.spongepowered.common.util.transformation;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.spongepowered.api.util.Axis;
+import org.spongepowered.api.util.rotation.Rotation;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.math.GenericMath;
 import org.spongepowered.math.matrix.Matrix4d;
 import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector4d;
+
+import java.util.Objects;
 
 public final class SpongeTransformation implements Transformation {
 
@@ -37,13 +42,19 @@ public final class SpongeTransformation implements Transformation {
     private final Matrix4d transformation;
     private final Matrix4d directionTransformation;
     private final boolean performRounding;
+    private final Rotation rotation;
+    private final boolean flipx;
+    private final boolean flipz;
 
     public SpongeTransformation(final Vector3d origin, final Matrix4d transformation, final Matrix4d directionTransformation,
-            final boolean performRounding) {
+            final boolean performRounding, @Nullable final Rotation rotation, final boolean flipx, final boolean flipz) {
         this.origin = origin;
         this.transformation = transformation;
         this.directionTransformation = directionTransformation;
         this.performRounding = performRounding;
+        this.rotation = rotation;
+        this.flipx = flipx;
+        this.flipz = flipz;
     }
 
     @Override
@@ -94,6 +105,21 @@ public final class SpongeTransformation implements Transformation {
     @Override
     public @NonNull Vector3d origin() {
         return this.origin;
+    }
+
+    @Override
+    public @NonNull Rotation rotation() {
+        return this.rotation;
+    }
+
+    @Override
+    public boolean mirror(final @NonNull Axis axis) {
+        if (Objects.requireNonNull(axis, "axis") == Axis.X) {
+            return this.flipx;
+        } else if (axis == Axis.Y) {
+            return this.flipz;
+        }
+        return false;
     }
 
 }
