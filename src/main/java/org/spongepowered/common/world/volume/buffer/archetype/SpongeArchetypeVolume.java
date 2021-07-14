@@ -24,15 +24,21 @@
  */
 package org.spongepowered.common.world.volume.buffer.archetype;
 
+import net.minecraft.nbt.CompoundTag;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockState;
 import org.spongepowered.api.block.BlockType;
 import org.spongepowered.api.block.entity.BlockEntityArchetype;
 import org.spongepowered.api.entity.EntityArchetype;
+import org.spongepowered.api.entity.EntityTypes;
 import org.spongepowered.api.event.cause.entity.SpawnType;
 import org.spongepowered.api.fluid.FluidState;
 import org.spongepowered.api.registry.RegistryHolder;
 import org.spongepowered.api.registry.RegistryTypes;
+import org.spongepowered.api.util.Direction;
+import org.spongepowered.api.util.mirror.Mirror;
+import org.spongepowered.api.util.rotation.Rotation;
 import org.spongepowered.api.world.BlockChangeFlags;
 import org.spongepowered.api.world.biome.Biome;
 import org.spongepowered.api.world.schematic.Palette;
@@ -47,9 +53,12 @@ import org.spongepowered.api.world.volume.stream.VolumeCollectors;
 import org.spongepowered.api.world.volume.stream.VolumeElement;
 import org.spongepowered.api.world.volume.stream.VolumePositionTranslators;
 import org.spongepowered.api.world.volume.stream.VolumeStream;
+import org.spongepowered.common.block.entity.SpongeBlockEntityArchetype;
+import org.spongepowered.common.entity.SpongeEntityArchetype;
 import org.spongepowered.common.event.tracking.PhaseContext;
 import org.spongepowered.common.event.tracking.PhaseTracker;
 import org.spongepowered.common.event.tracking.phase.plugin.PluginPhase;
+import org.spongepowered.common.util.DirectionUtil;
 import org.spongepowered.common.world.volume.SpongeVolumeStream;
 import org.spongepowered.common.world.volume.VolumeStreamUtils;
 import org.spongepowered.common.world.volume.buffer.AbstractVolumeBuffer;
@@ -57,6 +66,8 @@ import org.spongepowered.common.world.volume.buffer.archetype.blockentity.Mutabl
 import org.spongepowered.common.world.volume.buffer.archetype.entity.ObjectArrayMutableEntityArchetypeBuffer;
 import org.spongepowered.common.world.volume.buffer.biome.ByteArrayMutableBiomeBuffer;
 import org.spongepowered.common.world.volume.buffer.block.ArrayMutableBlockBuffer;
+import org.spongepowered.math.imaginary.Quaterniond;
+import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector3i;
 
 import java.util.Collection;
@@ -83,6 +94,19 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
         this.blockEntities = new MutableMapBlockEntityArchetypeBuffer(blocks);
         this.biomes = new ByteArrayMutableBiomeBuffer(
             PaletteTypes.BIOME_PALETTE.get().create(registries, RegistryTypes.BIOME),
+            start,
+            size
+        );
+        this.entities = new ObjectArrayMutableEntityArchetypeBuffer(start, size);
+    }
+
+    private SpongeArchetypeVolume(final Vector3i start, final Vector3i size, final Palette<Biome, Biome> biomePalette) {
+        super(start, size);
+        final ArrayMutableBlockBuffer blocks = new ArrayMutableBlockBuffer(start, size);
+        this.blocks = blocks;
+        this.blockEntities = new MutableMapBlockEntityArchetypeBuffer(blocks);
+        this.biomes = new ByteArrayMutableBiomeBuffer(
+            biomePalette.asImmutable().asMutable(Sponge.server().registries()),
             start,
             size
         );
@@ -237,6 +261,88 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
     @Override
     public boolean setBiome(final int x, final int y, final int z, final Biome biome) {
         return this.biomes.setBiome(x, y, z, biome);
+    }
+
+    @Override
+    public SpongeArchetypeVolume rotate(final Rotation rotation) {
+        final SpongeArchetypeVolume copy = new SpongeArchetypeVolume(this.start, this.size, this.biomes.getPalette());
+        // todo - math rotations are pain, there's two aspects needing to be taken care of:
+        //   - rotating the volume but retaining the same coordinate boundaries
+        //   - applying rotations to archetypes (as already partially done below)
+        final Vector3d center = this.start.toDouble().add(this.size.toDouble().div(2));
+        this.blockStateStream(this.blockMin(), this.blockMax(), StreamOptions.lazily())
+            .apply(VolumeCollectors.of(
+                copy,
+                VolumePositionTranslators.rotateBlocksOn(this.start, center, rotation),
+                VolumeApplicators.applyBlocks()
+            ));
+        this.blockEntityArchetypeStream(this.blockMin(), this.blockMax(), StreamOptions.lazily())
+            .apply(VolumeCollectors.of(
+                copy,
+                VolumePositionTranslators.rotateOn(this.start, center, rotation, (position, e) -> {
+                    if (e instanceof SpongeBlockEntityArchetype && ((SpongeBlockEntityArchetype) e).getCompound().contains("Rot")) {
+                        final int rot = ((SpongeBlockEntityArchetype) e).getCompound().getInt("Rot");
+                        final Direction direction = DirectionUtil.fromRotation(rot);
+                        final Direction newDirection = Direction.closest(position.add(direction.asBlockOffset()).toDouble());
+                        final SpongeBlockEntityArchetype newOne = ((SpongeBlockEntityArchetype) e).copy();
+                        newOne.getCompound().putByte("Rot", (byte) DirectionUtil.toRotation(newDirection));
+                        return newOne;
+                    }
+                    return e;
+                }),
+                VolumeApplicators.applyBlockEntityArchetypes()
+            ));
+        this.biomeStream(this.blockMin(), this.blockMax(), StreamOptions.lazily())
+            .apply(VolumeCollectors.of(
+                copy,
+                VolumePositionTranslators.rotateOn(this.start, center, rotation, (p, e) -> e),
+                VolumeApplicators.applyBiomes()
+            ));
+        this.entityArchetypeStream(this.blockMin(), this.blockMax(), StreamOptions.lazily())
+            .apply(VolumeCollectors.of(
+                copy,
+                VolumePositionTranslators.rotateOn(this.start, center, rotation, (p, e) -> {
+                    if (e instanceof SpongeEntityArchetype && !((SpongeEntityArchetype) e).getCompound().isEmpty()) {
+                        final SpongeEntityArchetype newCopy = ((SpongeEntityArchetype) e).copy();
+                        final CompoundTag compound = newCopy.getCompound();
+                        // TODO - verify these rotations work
+                        if (compound.contains("Leash")) {
+                            final CompoundTag leashCompound = compound.getCompound("Leash");
+                            leashCompound.putInt("X", p.x());
+                            leashCompound.putInt("Y", p.y());
+                            leashCompound.putInt("Z", p.z());
+                        }
+                        final boolean hasTilePosition = compound.contains("TileX") && compound.contains("TileY") && compound.contains("TileZ");
+                        final boolean hasFacing = compound.contains("Facing");
+                        if (hasTilePosition) {
+                            final Vector3i tilePosition = new Vector3i(compound.getInt("TileX"), compound.getInt("TileY"), compound.getInt("TileZ"));
+                            final Vector3i newTilePosition = tilePosition.sub(this.start).add(p);
+                            compound.putInt("TileX", newTilePosition.x());
+                            compound.putInt("TileY", newTilePosition.y());
+                            compound.putInt("TileZ", newTilePosition.z());
+
+                            if (hasFacing) {
+                                final boolean isPainting = e.type() == EntityTypes.PAINTING.get();
+                                final int facing = compound.getInt("Facing");
+                                final Direction existing = isPainting ? DirectionUtil.fromHorizontalHanging(facing) : DirectionUtil.fromHanging(facing);
+                                final Quaterniond q = Quaterniond.fromAngleDegAxis(rotation.angle(), 0, 1, 0);
+                                final Vector3d v = q.rotate(existing.asBlockOffset().toDouble());
+                                final Direction closest = isPainting ? Direction.closestHorizontal(v) : Direction.closest(v);
+                                compound.putByte("Facing", (byte) (isPainting ? DirectionUtil.toHorizontalHanging(closest) : DirectionUtil.toHanging(closest)));
+                            }
+                        }
+                        return newCopy;
+                    }
+                    return e;
+                }),
+                VolumeApplicators.applyEntityArchetypes()
+            ));
+        return copy;
+    }
+
+    @Override
+    public ArchetypeVolume mirror(Mirror mirror) {
+        return null;
     }
 
     @Override

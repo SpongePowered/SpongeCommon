@@ -60,6 +60,7 @@ import org.spongepowered.api.event.lifecycle.RegisterCommandEvent;
 import org.spongepowered.api.event.lifecycle.StoppingEngineEvent;
 import org.spongepowered.api.item.ItemTypes;
 import org.spongepowered.api.registry.RegistryTypes;
+import org.spongepowered.api.util.rotation.Rotation;
 import org.spongepowered.api.world.biome.Biome;
 import org.spongepowered.api.world.schematic.Schematic;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
@@ -223,6 +224,7 @@ public final class VolumeStreamTest implements LoadableModule {
                 }).build(),
             "paste"
         );
+
         final Parameter.Value<String> fileName = Parameter.string().key("fileName").build();
         event.register(
             this.plugin,
@@ -342,6 +344,37 @@ public final class VolumeStreamTest implements LoadableModule {
                 })
                 .build(),
             "load"
+        );
+
+        final Parameter.Value<Rotation> rotation = Parameter.registryElement(
+            TypeToken.get(Rotation.class), RegistryTypes.ROTATION)
+            .key("rotation")
+            .build();
+        event.register(this.plugin,
+            Command
+                .builder()
+                .shortDescription(Component.text("Rotate clipboard"))
+                .permission(this.plugin.metadata().id() + ".command.rotate")
+                .addParameter(rotation)
+                .executor(src -> {
+                    if (!(src.cause().root() instanceof ServerPlayer)) {
+                        src.sendMessage(Identity.nil(), Component.text("Player only.", NamedTextColor.RED));
+                        return CommandResult.success();
+                    }
+                    final ServerPlayer player = (ServerPlayer) src.cause().root();
+                    final Rotation desiredRotation = src.requireOne(rotation);
+                    final Schematic schematic;
+                    final PlayerData data = VolumeStreamTest.get(player);
+                    if (data.clipboard == null) {
+                        throw new CommandException(Component.text("Load a clipboard first before trying to rotate it"));
+                    }
+                    final ArchetypeVolume newClipboard = data.clipboard.rotate(desiredRotation);
+                    src.sendMessage(Identity.nil(), Component.text("Rotated clipboard " + desiredRotation.angle() + " degrees"));
+                    data.setClipboard(newClipboard);
+                    return CommandResult.success();
+                })
+                .build(),
+            "rotate"
         );
     }
 
