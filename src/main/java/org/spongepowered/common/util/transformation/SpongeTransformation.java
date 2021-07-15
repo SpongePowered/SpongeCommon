@@ -25,9 +25,9 @@
 package org.spongepowered.common.util.transformation;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.util.Axis;
 import org.spongepowered.api.util.rotation.Rotation;
+import org.spongepowered.api.util.rotation.Rotations;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.math.GenericMath;
 import org.spongepowered.math.matrix.Matrix4d;
@@ -47,7 +47,7 @@ public final class SpongeTransformation implements Transformation {
     private final boolean flipz;
 
     public SpongeTransformation(final Vector3d origin, final Matrix4d transformation, final Matrix4d directionTransformation,
-            final boolean performRounding, @Nullable final Rotation rotation, final boolean flipx, final boolean flipz) {
+            final boolean performRounding, final Rotation rotation, final boolean flipx, final boolean flipz) {
         this.origin = origin;
         this.transformation = transformation;
         this.directionTransformation = directionTransformation;
@@ -116,10 +116,60 @@ public final class SpongeTransformation implements Transformation {
     public boolean mirror(final @NonNull Axis axis) {
         if (Objects.requireNonNull(axis, "axis") == Axis.X) {
             return this.flipx;
-        } else if (axis == Axis.Y) {
+        } else if (axis == Axis.Z) {
             return this.flipz;
         }
         return false;
+    }
+
+    @Override
+    public boolean initialMirror(final @NonNull Axis axis) {
+        final boolean isRightAngle = this.rotation == Rotations.CLOCKWISE_90.get() || this.rotation == Rotations.COUNTERCLOCKWISE_90.get();
+        if (isRightAngle) {
+            if (Objects.requireNonNull(axis, "axis") == Axis.X) {
+                return this.flipz;
+            } else if (axis == Axis.Z) {
+                return this.flipx;
+            }
+            return false;
+        } else {
+            return this.mirror(axis);
+        }
+    }
+
+    @Override
+    public @NonNull Transformation inverse() {
+        final Rotation inverseRotation;
+        final boolean flipMirror;
+        if (this.rotation == Rotations.CLOCKWISE_90.get()) {
+            inverseRotation = Rotations.COUNTERCLOCKWISE_90.get();
+            flipMirror = true;
+        } else if (this.rotation == Rotations.COUNTERCLOCKWISE_90.get()) {
+            inverseRotation = Rotations.CLOCKWISE_90.get();
+            flipMirror = true;
+        } else {
+            inverseRotation = this.rotation;
+            flipMirror = false;
+        }
+
+        final boolean inverseFlipX;
+        final boolean inverseFlipZ;
+        if (flipMirror && (this.flipz != this.flipx)) {
+            inverseFlipX = this.flipz;
+            inverseFlipZ = this.flipx;
+        } else {
+            inverseFlipX = this.flipx;
+            inverseFlipZ = this.flipz;
+        }
+        return new SpongeTransformation(
+                this.origin,
+                this.transformation.invert(),
+                this.directionTransformation.invert(),
+                this.performRounding,
+                inverseRotation,
+                inverseFlipX,
+                inverseFlipZ
+        );
     }
 
 }
