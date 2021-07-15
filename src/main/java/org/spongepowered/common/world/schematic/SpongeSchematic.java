@@ -37,8 +37,7 @@ import org.spongepowered.api.data.value.Value;
 import org.spongepowered.api.data.value.ValueContainer;
 import org.spongepowered.api.entity.EntityArchetype;
 import org.spongepowered.api.fluid.FluidState;
-import org.spongepowered.api.util.mirror.Mirror;
-import org.spongepowered.api.util.rotation.Rotation;
+import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.api.world.biome.Biome;
 import org.spongepowered.api.world.schematic.Palette;
 import org.spongepowered.api.world.schematic.Schematic;
@@ -53,6 +52,7 @@ import org.spongepowered.math.vector.Vector3i;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -363,13 +363,7 @@ public class SpongeSchematic extends AbstractVolumeBuffer implements Schematic {
     }
 
     @Override
-    public Schematic rotate(final Rotation rotation) {
-        final SpongeArchetypeVolume rotated = this.volume.rotate(rotation);
-        return new SpongeSchematic(this.start, this.size, rotated, this.metadata);
-    }
-
-    @Override
-    public ArchetypeVolume mirror(final Mirror mirror) {
-        return null;
+    public ArchetypeVolume transform(final Transformation transformation) {
+        return new ReferentSchematicVolume(this, Objects.requireNonNull(transformation, "Transformation cannot be null"));
     }
 }
