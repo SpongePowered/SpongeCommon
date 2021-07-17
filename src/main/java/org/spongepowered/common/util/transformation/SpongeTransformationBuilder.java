@@ -28,6 +28,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.util.Axis;
 import org.spongepowered.api.util.rotation.Rotation;
+import org.spongepowered.api.util.rotation.Rotations;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.math.imaginary.Quaterniond;
 import org.spongepowered.math.matrix.Matrix4d;
@@ -72,7 +73,7 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
 
     @Override
     public @NonNull SpongeTransformationBuilder rotate(final @NonNull Rotation rotation) {
-        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(rotation.angle().degrees(), Axis.Y.toVector3d());
+        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(-rotation.angle().degrees(), Axis.Y.toVector3d());
         this.transformation = this.transformation.rotate(rotationQuaternion);
         this.directionTransformation = this.directionTransformation.rotate(rotationQuaternion);
         if (this.rotation == null) {
@@ -121,7 +122,7 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
                 this.transformation.mul(Matrix4d.createTranslation(this.origin.mul(-1))).translate(this.origin),
                 this.directionTransformation,
                 this.performRounding,
-                this.rotation == null ? ((Rotation) (Object) net.minecraft.world.level.block.Rotation.NONE) : this.rotation,
+                this.rotation == null ? Rotations.NONE.get() : this.rotation,
                 this.flipx,
                 this.flipz);
     }
