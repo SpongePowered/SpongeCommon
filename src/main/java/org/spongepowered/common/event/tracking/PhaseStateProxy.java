@@ -328,4 +328,8 @@ public interface PhaseStateProxy<C extends PhaseContext<C>> {
             final List<SlotTransaction> slotTransactions) {
         return this.getState().createInventoryEvent(this.asContext(), cause, inventory, slotTransactions);
     }
+
+    default boolean doesContainerCaptureEntitySpawn(final Entity entityIn) {
+        return this.getState().doesContainerCaptureEntitySpawn(this.asContext(), entityIn);
+    }
 }
