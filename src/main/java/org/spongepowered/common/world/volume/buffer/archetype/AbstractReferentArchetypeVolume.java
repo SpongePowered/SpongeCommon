@@ -29,6 +29,9 @@ import org.spongepowered.api.block.BlockState;
 import org.spongepowered.api.block.entity.BlockEntityArchetype;
 import org.spongepowered.api.entity.EntityArchetype;
 import org.spongepowered.api.fluid.FluidState;
+import org.spongepowered.api.util.Axis;
+import org.spongepowered.api.util.mirror.Mirror;
+import org.spongepowered.api.util.mirror.Mirrors;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.api.world.biome.Biome;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
@@ -37,14 +40,15 @@ import org.spongepowered.api.world.volume.archetype.entity.EntityArchetypeVolume
 import org.spongepowered.api.world.volume.stream.StreamOptions;
 import org.spongepowered.api.world.volume.stream.VolumeElement;
 import org.spongepowered.api.world.volume.stream.VolumeStream;
+import org.spongepowered.common.util.MemoizedSupplier;
 import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector3i;
-import org.spongepowered.math.vector.Vector4d;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -58,8 +62,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     protected final Transformation transformation;
 
     protected AbstractReferentArchetypeVolume(final Supplier<A> reference, final Transformation transformation) {
-        this.reference = reference;
+        this.reference = MemoizedSupplier.memoize(reference);
         this.transformation = transformation;
+    }
+
+    public final Transformation transformation() {
+        return this.transformation;
     }
 
     protected <T> T applyReference(final Function<A, T> function) {
@@ -74,30 +82,41 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
         function.accept(archetypeVolume);
     }
 
-    protected Vector3i inverseTransform(final int x, final int y, final int z) {
-        final Vector4d transformed = this.transformation.positionTransformationMatrix()
-            .invert()
-            .transform(new Vector3d(x, y, z).toVector4(1))
-            .round();
-        return transformed.toInt().toVector3();
+    public Vector3i inverseTransform(final double x, final double y, final double z) {
+        return this.transformation.inverse()
+            .transformPosition(new Vector3d(x, y, z))
+            .toInt();
+    }
+
+    protected Vector3i transformBlockSizes(final Vector3i min, final Vector3i max, final BiFunction<Vector3i, Vector3i, Vector3i> minmax) {
+        final Vector3d rawBlockMin = min.toDouble();
+        final Vector3i transformedMin = this.transformation.transformPosition(rawBlockMin)
+            .toInt();
+        final Vector3d rawBlockMax = max.toDouble();
+        final Vector3i transformedMax = this.transformation.transformPosition(rawBlockMax)
+            .toInt();
+        return minmax.apply(transformedMin, transformedMax);
+    }
+
+    protected Vector3i transformBlockSize(final BiFunction<Vector3i, Vector3i, Vector3i> minmax) {
+        return this.applyReference(a -> this.transformBlockSizes(a.blockMin(), a.blockMax(), minmax));
+    }
+
+    protected Vector3d transformStreamBlockPosition(final Vector3d blockPosition) {
+        // we assume that the position is already center adjusted, but since
+        // we're not going to want to "flatten" the positions, we need to correctly
+        // round and then re-add the offset post transformation
+        return this.transformation.transformPosition(blockPosition);
     }
 
     @Override
     public Vector3i blockMin() {
-        return this.applyReference(a -> {
-            final Vector3i transformedMin = this.transformation.transformPosition(a.blockMin().toDouble()).toInt();
-            final Vector3i transformedMax = this.transformation.transformPosition(a.blockMax().toDouble()).toInt();
-            return transformedMin.min(transformedMax);
-        });
+        return this.transformBlockSize(Vector3i::min);
     }
 
     @Override
     public Vector3i blockMax() {
-        return this.applyReference(a -> {
-            final Vector3i transformedMin = this.transformation.transformPosition(a.blockMin().toDouble()).toInt();
-            final Vector3i transformedMax = this.transformation.transformPosition(a.blockMax().toDouble()).toInt();
-            return transformedMin.max(transformedMax);
-        });
+        return this.transformBlockSize(Vector3i::max);
     }
 
     @Override
@@ -145,12 +164,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, BlockEntityArchetype> blockEntityArchetypeStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i minTransformed = this.inverseTransform(min.x(), min.y(), min.z());
-        final Vector3i maxTransformed = this.inverseTransform(max.x(), max.y(), max.z());
+        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
+        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
         return this.applyReference(
-            a -> a.blockEntityArchetypeStream(minTransformed.min(max), maxTransformed.max(minTransformed), options)
+            a -> a.blockEntityArchetypeStream(invertedTransformedMin, invertedTransformedMax, options)
                 .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformation.transformPosition(e.position().toDouble()).toInt()
+                    this.transformStreamBlockPosition(e.position())
                 ))
         );
     }
@@ -192,12 +211,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, EntityArchetype> entityArchetypeStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i minTransformed = this.inverseTransform(min.x(), min.y(), min.z());
-        final Vector3i maxTransformed = this.inverseTransform(max.x(), max.y(), max.z());
+        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
+        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
         return this.applyReference(
-            a -> a.entityArchetypeStream(minTransformed.min(max), maxTransformed.max(minTransformed), options)
+            a -> a.entityArchetypeStream(invertedTransformedMin, invertedTransformedMax, options)
                 .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformation.transformPosition(e.position().toDouble()).toInt()
+                    this.transformStreamBlockPosition(e.position())
                 ))
         );
     }
@@ -213,7 +232,7 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     @Override
     public void addEntity(final EntityArchetypeEntry entry) {
         final Vector3d position = entry.position();
-        final Vector3i transformed = this.inverseTransform(position.floorX(), position.floorY(), position.floorZ());
+        final Vector3i transformed = this.inverseTransform(position.x(), position.y(), position.z());
         this.consumeReference(a -> a.addEntity(entry.archetype(), transformed.toDouble()));
     }
 
@@ -227,12 +246,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, Biome> biomeStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i minTransformed = this.inverseTransform(min.x(), min.y(), min.z());
-        final Vector3i maxTransformed = this.inverseTransform(max.x(), max.y(), max.z());
+        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
+        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
         return this.applyReference(
-            a -> a.biomeStream(minTransformed.min(max), maxTransformed.max(minTransformed), options)
+            a -> a.biomeStream(invertedTransformedMin, invertedTransformedMax, options)
                 .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformation.transformPosition(e.position().toDouble()).toInt()
+                    this.transformStreamBlockPosition(e.position())
                 ))
         );
     }
@@ -240,7 +259,6 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     @Override
     public boolean setBiome(final int x, final int y, final int z, final Biome biome) {
         final Vector3i transformed = this.inverseTransform(x, y, z);
-
         return this.applyReference(a -> a.setBiome(transformed.x(), transformed.y(), transformed.z(), biome));
     }
 
@@ -266,12 +284,21 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, BlockState> blockStateStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i minTransformed = this.inverseTransform(min.x(), min.y(), min.z());
-        final Vector3i maxTransformed = this.inverseTransform(max.x(), max.y(), max.z());
+        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
+        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
+        final boolean xMirror = this.transformation.mirror(Axis.X);
+        final boolean zMirror = this.transformation.mirror(Axis.Z);
+        final Supplier<Mirror> mirror = xMirror
+            ? Mirrors.FRONT_BACK
+            : zMirror ? Mirrors.LEFT_RIGHT : Mirrors.NONE;
         return this.applyReference(
-            a -> a.blockStateStream(minTransformed.min(max), maxTransformed.max(minTransformed), options)
-                .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformation.transformPosition(e.position().toDouble()).toInt()
+            a -> a.blockStateStream(invertedTransformedMin, invertedTransformedMax, options)
+                .transform(e -> VolumeElement.of(this,
+                    () -> e.type()
+                        // Order of operations matters here, block states need to be mirrored first, then rotated
+                        .mirror(mirror)
+                        .rotate(this.transformation.rotation()),
+                    this.transformStreamBlockPosition(e.position())
                 ))
         );
     }
