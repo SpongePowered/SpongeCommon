@@ -24,6 +24,7 @@
  */
 package org.spongepowered.common.event.tracking.phase.packet;
 
+import org.spongepowered.api.data.Transaction;
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
 import org.spongepowered.api.event.CauseStackManager;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
@@ -82,7 +83,7 @@ import java.util.List;
 public final class PacketPhaseUtil {
 
     @SuppressWarnings("rawtypes")
-    public static boolean handleSlotRestore(final Player player, final @Nullable AbstractContainerMenu containerMenu, final List<SlotTransaction> slotTransactions, final boolean eventCancelled) {
+    public static boolean handleSlotRestore(@Nullable final Player player, final @Nullable AbstractContainerMenu containerMenu, final List<SlotTransaction> slotTransactions, final boolean eventCancelled) {
         boolean restoredAny = false;
         for (final SlotTransaction slotTransaction : slotTransactions) {
 
@@ -102,7 +103,7 @@ public final class PacketPhaseUtil {
                 }
             }
         }
-        if (containerMenu != null) {
+        if (containerMenu != null && player != null) {
             try (PhaseContext<@NonNull ?> ignored = BlockPhase.State.RESTORING_BLOCKS.createPhaseContext(PhaseTracker.SERVER).buildAndSwitch()) {
                 containerMenu.broadcastChanges();
             }
@@ -113,6 +114,22 @@ public final class PacketPhaseUtil {
             }
         }
         return restoredAny;
+    }
+
+    public static void handleCursorRestore(final Player player, final Transaction<ItemStackSnapshot> cursorTransaction) {
+        final ItemStackSnapshot cursorSnap;
+        if (!cursorTransaction.isValid()) {
+            cursorSnap = cursorTransaction.original();
+        } else if (cursorTransaction.custom().isPresent()) {
+            cursorSnap = cursorTransaction.finalReplacement();
+        } else {
+            return;
+        }
+        final ItemStack cursor = ItemStackUtil.fromSnapshotToNative(cursorSnap);
+        player.inventory.setCarried(cursor);
+        if (player instanceof net.minecraft.server.level.ServerPlayer) {
+            ((net.minecraft.server.level.ServerPlayer) player).connection.send(new ClientboundContainerSetSlotPacket(-1, -1, cursor));
+        }
     }
 
     public static void handleCustomCursor(final Player player, final ItemStackSnapshot customCursor) {
