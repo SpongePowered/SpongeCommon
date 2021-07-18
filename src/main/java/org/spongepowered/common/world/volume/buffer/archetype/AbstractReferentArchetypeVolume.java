@@ -303,7 +303,7 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
                         // Order of operations matters here, block states need to be mirrored first, then rotated
                         .mirror(mirror)
                         .rotate(this.transformation.rotation()),
-                    this.transformStreamBlockPosition(e.position())
+                    this.transformStreamBlockPosition(e.position().add(VolumePositionTranslators.BLOCK_OFFSET)).sub(VolumePositionTranslators.BLOCK_OFFSET)
                 ))
         );
     }
