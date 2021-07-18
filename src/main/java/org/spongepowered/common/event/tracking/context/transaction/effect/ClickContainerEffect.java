@@ -22,26 +22,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.event.tracking.phase.packet.inventory;
+package org.spongepowered.common.event.tracking.context.transaction.effect;
 
-import net.minecraft.world.entity.Entity;
-import org.spongepowered.api.event.cause.entity.SpawnType;
-import org.spongepowered.api.event.cause.entity.SpawnTypes;
-import org.spongepowered.common.event.tracking.TrackingUtil;
-import org.spongepowered.common.event.tracking.phase.packet.BasicPacketContext;
-import org.spongepowered.common.event.tracking.phase.packet.BasicPacketState;
+import org.spongepowered.common.event.tracking.context.transaction.pipeline.BlockPipeline;
+import org.spongepowered.common.event.tracking.context.transaction.pipeline.PipelineCursor;
+import org.spongepowered.common.world.SpongeBlockChangeFlag;
 
-import java.util.function.Supplier;
+import net.minecraft.world.level.block.state.BlockState;
 
-public final class CloseWindowState extends BasicPacketState {
+public final class ClickContainerEffect implements ProcessingSideEffect {
+
+    private static final class Holder {
+        static final ClickContainerEffect INSTANCE = new ClickContainerEffect();
+    }
+    public static ClickContainerEffect getInstance() {
+        return Holder.INSTANCE;
+    }
+    ClickContainerEffect() {}
 
     @Override
-    public void unwind(final BasicPacketContext context) {
-        TrackingUtil.processBlockCaptures(context);
+    public EffectResult processSideEffect(final BlockPipeline pipeline, final PipelineCursor oldState,
+        final BlockState newState, final SpongeBlockChangeFlag flag, final int limit
+    ) {
+        return EffectResult.NULL_RETURN;
     }
 
-    @Override
-    public Supplier<SpawnType> getSpawnTypeForTransaction(final BasicPacketContext context, final Entity entityToSpawn) {
-        return SpawnTypes.DROPPED_ITEM;
-    }
+
 }

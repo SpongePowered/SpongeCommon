@@ -24,11 +24,13 @@
  */
 package org.spongepowered.common.event.tracking.phase.packet.inventory;
 
+import net.minecraft.server.level.ServerPlayer;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.data.Transaction;
 import org.spongepowered.api.entity.Entity;
-import org.spongepowered.api.event.SpongeEventFactory;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.EventContextKeys;
+import org.spongepowered.api.event.SpongeEventFactory;
 import org.spongepowered.api.event.cause.entity.SpawnTypes;
 import org.spongepowered.api.event.item.inventory.container.ClickContainerEvent;
 import org.spongepowered.api.item.inventory.Container;
@@ -38,30 +40,34 @@ import org.spongepowered.api.item.inventory.transaction.SlotTransaction;
 import org.spongepowered.common.event.tracking.PhaseTracker;
 import org.spongepowered.common.util.Constants;
 
-import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.Optional;
 
 public final class PrimaryInventoryClickState extends BasicInventoryPacketState {
 
     public PrimaryInventoryClickState() {
-        super(
-            Constants.Networking.MODE_CLICK | Constants.Networking.BUTTON_PRIMARY | Constants.Networking.CLICK_INSIDE_WINDOW);
+        super(Constants.Networking.MODE_CLICK | Constants.Networking.BUTTON_PRIMARY | Constants.Networking.CLICK_INSIDE_WINDOW);
     }
 
     @Override
-    public ClickContainerEvent createInventoryEvent(final ServerPlayer playerMP, final Container openContainer,
-        final Transaction<ItemStackSnapshot> transaction,
-        final List<SlotTransaction> slotTransactions, final List<Entity> capturedEntities, final int usedButton,
-        final @Nullable Slot slot) {
+    public ClickContainerEvent createContainerEvent(
+        final InventoryPacketContext context, final Cause cause,
+            final ServerPlayer serverPlayer, final Container openContainer, final Transaction<ItemStackSnapshot> transaction,
+            final List<SlotTransaction> slotTransactions, final List<Entity> capturedEntities, final int usedButton, @Nullable
+    final Slot slot) {
         if (!capturedEntities.isEmpty()) {
             PhaseTracker.getCauseStackManager().addContext(EventContextKeys.SPAWN_TYPE, SpawnTypes.DISPENSE);
-            return SpongeEventFactory.createClickContainerEventDropOutsidePrimary(
-                PhaseTracker.getCauseStackManager().currentCause(),
-                openContainer, transaction, capturedEntities, Optional.ofNullable(slot), slotTransactions);
+            return SpongeEventFactory.createClickContainerEventDropOutsidePrimary(cause,
+                    openContainer, transaction, capturedEntities, Optional.ofNullable(slot), slotTransactions);
         }
-        return SpongeEventFactory.createClickContainerEventPrimary(PhaseTracker.getCauseStackManager().currentCause(),
-            openContainer, transaction, Optional.ofNullable(slot), slotTransactions);
+        return SpongeEventFactory.createClickContainerEventPrimary(cause,
+                openContainer, transaction, Optional.ofNullable(slot), slotTransactions);
     }
 
+    @Override
+    public boolean doesContainerCaptureEntitySpawn(
+        final InventoryPacketContext context, final net.minecraft.world.entity.Entity entityIn
+    ) {
+        return true;
+    }
 }

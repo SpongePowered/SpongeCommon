@@ -24,13 +24,8 @@
  */
 package org.spongepowered.common.event.tracking.context.transaction;
 
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.checkerframework.framework.qual.DefaultQualifier;
 import org.spongepowered.api.event.CauseStackManager;
+import org.spongepowered.api.event.block.ChangeBlockEvent;
 import org.spongepowered.api.world.BlockChangeFlags;
 import org.spongepowered.common.block.SpongeBlockSnapshot;
 import org.spongepowered.common.block.SpongeBlockSnapshotBuilder;
@@ -38,6 +33,13 @@ import org.spongepowered.common.bridge.world.level.block.entity.BlockEntityBridg
 import org.spongepowered.common.event.tracking.PhaseContext;
 import org.spongepowered.common.util.PrettyPrinter;
 import org.spongepowered.math.vector.Vector3i;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.framework.qual.DefaultQualifier;
 
 import java.util.Optional;
 import java.util.StringJoiner;
@@ -71,7 +73,7 @@ public final class RemoveTileEntity extends BlockEventBasedTransaction {
     }
 
     @Override
-    public void restore() {
+    public void restore(PhaseContext<?> context, ChangeBlockEvent.All event) {
         this.tileSnapshot.restore(true, BlockChangeFlags.NONE);
     }
 

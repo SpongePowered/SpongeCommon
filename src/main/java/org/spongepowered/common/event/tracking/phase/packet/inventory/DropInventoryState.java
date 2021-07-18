@@ -35,14 +35,11 @@ import org.spongepowered.api.event.entity.SpawnEntityEvent;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.util.Tuple;
-import org.spongepowered.common.bridge.world.inventory.container.TrackedInventoryBridge;
-import org.spongepowered.common.event.tracking.TrackingUtil;
 import org.spongepowered.common.event.tracking.context.transaction.GameTransaction;
 import org.spongepowered.common.event.tracking.context.transaction.SpawnEntityTransaction;
 import org.spongepowered.common.item.util.ItemStackUtil;
 
 import com.google.common.collect.ImmutableList;
-import net.minecraft.server.level.ServerPlayer;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.function.BiConsumer;
@@ -62,16 +59,6 @@ public final class DropInventoryState extends BasicInventoryPacketState {
     }
 
     @Override
-    public void unwind(final InventoryPacketContext context) {
-        final ServerPlayer player = context.getPacketPlayer();
-
-        TrackingUtil.processBlockCaptures(context);
-        final TrackedInventoryBridge mixinContainer = (TrackedInventoryBridge) player.containerMenu;
-        mixinContainer.bridge$setCaptureInventory(false);
-        mixinContainer.bridge$getCapturedSlotTransactions().clear();
-    }
-
-    @Override
     public SpawnEntityEvent createSpawnEvent(
         final InventoryPacketContext context, final GameTransaction<@NonNull ?> parent,
         final ImmutableList<Tuple<net.minecraft.world.entity.Entity, SpawnEntityTransaction.DummySnapshot>> collect,
@@ -83,10 +70,4 @@ public final class DropInventoryState extends BasicInventoryPacketState {
         );
     }
 
-    @Override
-    public Supplier<SpawnType> getSpawnTypeForTransaction(
-        final InventoryPacketContext context, final net.minecraft.world.entity.Entity entityToSpawn
-    ) {
-        return SpawnTypes.DROPPED_ITEM;
-    }
 }

@@ -22,26 +22,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.common.event.tracking.phase.packet.inventory;
+package org.spongepowered.common.event.tracking.context.transaction;
 
-import net.minecraft.world.entity.Entity;
-import org.spongepowered.api.event.cause.entity.SpawnType;
-import org.spongepowered.api.event.cause.entity.SpawnTypes;
-import org.spongepowered.common.event.tracking.TrackingUtil;
-import org.spongepowered.common.event.tracking.phase.packet.BasicPacketContext;
-import org.spongepowered.common.event.tracking.phase.packet.BasicPacketState;
+import net.minecraft.server.level.ServerLevel;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.event.item.inventory.ChangeInventoryEvent;
+import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.transaction.SlotTransaction;
+import org.spongepowered.api.world.server.ServerWorld;
+import org.spongepowered.common.event.tracking.PhaseContext;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
-public final class CloseWindowState extends BasicPacketState {
+public class InventorySlotTransaction extends InventoryBasedTransaction {
 
-    @Override
-    public void unwind(final BasicPacketContext context) {
-        TrackingUtil.processBlockCaptures(context);
+    private final SlotTransaction newTransaction;
+
+    public InventorySlotTransaction(final Supplier<ServerLevel> worldSupplier, final Inventory inventory, final SlotTransaction newTransaction) {
+        super(((ServerWorld) worldSupplier.get()).key(), inventory);
+        this.newTransaction = newTransaction;
     }
 
     @Override
-    public Supplier<SpawnType> getSpawnTypeForTransaction(final BasicPacketContext context, final Entity entityToSpawn) {
-        return SpawnTypes.DROPPED_ITEM;
+    Optional<SlotTransaction> getSlotTransaction() {
+        return Optional.of(this.newTransaction);
     }
+
 }

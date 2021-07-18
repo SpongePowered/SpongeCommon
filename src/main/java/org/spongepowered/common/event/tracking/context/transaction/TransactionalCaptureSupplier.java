@@ -29,10 +29,16 @@ import com.google.common.collect.ImmutableMultimap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.TickNextTickData;
 import net.minecraft.world.level.block.Block;
@@ -47,6 +53,10 @@ import org.spongepowered.api.event.Cancellable;
 import org.spongepowered.api.event.CauseStackManager;
 import org.spongepowered.api.event.Event;
 import org.spongepowered.api.event.cause.entity.SpawnType;
+import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.ItemStackSnapshot;
+import org.spongepowered.api.item.inventory.Slot;
+import org.spongepowered.api.item.inventory.transaction.SlotTransaction;
 import org.spongepowered.api.world.BlockChangeFlag;
 import org.spongepowered.api.world.BlockChangeFlags;
 import org.spongepowered.common.accessor.world.damagesource.CombatEntryAccessor;
@@ -58,9 +68,12 @@ import org.spongepowered.common.event.tracking.PhaseContext;
 import org.spongepowered.common.event.tracking.PhaseTracker;
 import org.spongepowered.common.event.tracking.TrackingUtil;
 import org.spongepowered.common.event.tracking.context.ICaptureSupplier;
+import org.spongepowered.common.event.tracking.context.transaction.effect.ClickContainerEffect;
 import org.spongepowered.common.event.tracking.context.transaction.effect.EntityPerformingDropsEffect;
 import org.spongepowered.common.event.tracking.context.transaction.effect.PrepareBlockDrops;
 import org.spongepowered.common.event.tracking.context.transaction.type.TransactionType;
+import org.spongepowered.common.inventory.adapter.InventoryAdapter;
+import org.spongepowered.common.item.util.ItemStackUtil;
 import org.spongepowered.common.util.Constants;
 import org.spongepowered.common.world.BlockChange;
 import org.spongepowered.common.world.SpongeBlockChangeFlag;
@@ -224,15 +237,103 @@ public final class TransactionalCaptureSupplier implements ICaptureSupplier {
         this.logTransaction(notificationTransaction);
     }
 
-    @SuppressWarnings({"ConstantConditions"})
+    @SuppressWarnings({"ConstantConditions", "unchecked"})
     public void logEntitySpawn(final PhaseContext<@NonNull ?> current, final TrackedWorldBridge serverWorld,
         final Entity entityIn) {
+        if (this.tail != null && this.tail.acceptEntitySpawn(current, entityIn)) {
+            return;
+        }
         final WeakReference<ServerLevel> worldRef = new WeakReference<>((ServerLevel) serverWorld);
         final Supplier<ServerLevel> worldSupplier = () -> Objects.requireNonNull(worldRef.get(), "ServerWorld dereferenced");
         final Supplier<SpawnType> contextualType = current.getSpawnTypeForTransaction(entityIn);
         final SpawnEntityTransaction transaction = new SpawnEntityTransaction(worldSupplier, entityIn, contextualType);
         this.logTransaction(transaction);
     }
+
+    public void logContainerSlotTransaction(
+        final PhaseContext<@NonNull ?> phaseContext, final SlotTransaction newTransaction,
+        final AbstractContainerMenu abstractContainerMenu
+    ) {
+        if (this.tail != null && this.tail.acceptSlotTransaction(newTransaction, abstractContainerMenu)) {
+            return;
+        }
+        final Supplier<ServerLevel> worldSupplier = phaseContext.attemptWorldKey();
+        final ContainerSlotTransaction transaction = new ContainerSlotTransaction(
+            worldSupplier, abstractContainerMenu, newTransaction);
+        this.logTransaction(transaction);
+    }
+
+    public EffectTransactor logClickContainer(
+        final AbstractContainerMenu menu, final int slotNum, final int buttonNum, final ClickType clickType, final Player player
+    ) {
+        final @Nullable Slot slot;
+        if (buttonNum >= 0) { // We have a valid slot
+            slot = ((InventoryAdapter) menu).inventoryAdapter$getSlot(slotNum).orElse(null);
+        } else {
+            slot = null; // TODO slot for ClickContainerEvent.Drag?
+        }
+        final ClickMenuTransaction transaction = new ClickMenuTransaction(
+            player, menu, slotNum, buttonNum, clickType, slot, ItemStackUtil.snapshotOf(player.inventory.getCarried()));
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance()));
+    }
+
+    public EffectTransactor logPlayerInventoryChange(final Player player, final PlayerInventoryTransaction.EventCreator eventCreator) {
+        final PlayerInventoryTransaction transaction = new PlayerInventoryTransaction(player, eventCreator);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance())); // TODO?
+    }
+
+    public EffectTransactor logPlayerCarriedItem(final Player player, final int newSlot) {
+        final SetCarriedItemTransaction transaction = new SetCarriedItemTransaction(player, newSlot);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance())); // TODO?
+    }
+
+    public EffectTransactor logCreativeClickContainer(final int slotNum, final ItemStackSnapshot creativeStack, final Player player) {
+        final ClickCreativeMenuTransaction transaction = new ClickCreativeMenuTransaction(player, slotNum, creativeStack);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance()));
+    }
+
+    public EffectTransactor logDropFromPlayerInventory(final Player player, final boolean dropAll) {
+        final DropFromPlayerInventoryTransaction transaction = new DropFromPlayerInventoryTransaction(player, dropAll);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance()));
+    }
+
+    public EffectTransactor logOpenInventory(final Player player) {
+        final OpenMenuTransaction transaction = new OpenMenuTransaction(player);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance())); // TODO?
+    }
+
+    public EffectTransactor logCloseInventory(final Player player, final boolean clientSource) {
+        final CloseMenuTransaction transaction = new CloseMenuTransaction(player, clientSource);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance())); // TODO?
+    }
+
+    public EffectTransactor logPlaceRecipe(boolean shift, Recipe<?> recipe, ServerPlayer player, Inventory craftInv) {
+        final PlaceRecipeTransaction transaction = new PlaceRecipeTransaction(player, shift, recipe, craftInv);
+        this.logTransaction(transaction);
+        return this.pushEffect(new ResultingTransactionBySideEffect(ClickContainerEffect.getInstance()));
+    }
+
+    public void logInventorySlotTransaction(
+            final PhaseContext<@NonNull ?> phaseContext, final Slot slot, ItemStack orig, ItemStack newStack,
+            final Inventory inventory
+    ) {
+        final SlotTransaction newTransaction = new SlotTransaction(slot, ItemStackUtil.snapshotOf(orig), ItemStackUtil.snapshotOf(newStack));
+        if (this.tail != null && this.tail.acceptSlotTransaction(newTransaction, inventory)) {
+            return;
+        }
+        final Supplier<ServerLevel> worldSupplier = phaseContext.attemptWorldKey();
+        final InventorySlotTransaction transaction = new InventorySlotTransaction(
+                worldSupplier, inventory, newTransaction);
+        this.logTransaction(transaction);
+    }
+
     private GameTransaction createTileReplacementTransaction(final BlockPos pos, final @Nullable BlockEntity existing,
         final BlockEntity proposed, final Supplier<ServerLevel> worldSupplier
     ) {
@@ -455,7 +556,7 @@ public final class TransactionalCaptureSupplier implements ICaptureSupplier {
                 }
                 for (final GameTransaction<@NonNull ?> gameTransaction : eventByTransaction.transactions.reverse()) {
                     if (gameTransaction.cancelled) {
-                        gameTransaction.restore();
+                        ((GameTransaction) gameTransaction).restore(context, eventByTransaction.event);
                     }
                 }
             }
@@ -607,5 +708,6 @@ public final class TransactionalCaptureSupplier implements ICaptureSupplier {
             this.effect = null;
         }
     }
+
 
 }

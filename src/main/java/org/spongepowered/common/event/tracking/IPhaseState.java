@@ -42,7 +42,6 @@ import org.checkerframework.framework.qual.DefaultQualifier;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.block.transaction.BlockTransactionReceipt;
 import org.spongepowered.api.block.transaction.Operation;
-import org.spongepowered.api.block.transaction.Operations;
 import org.spongepowered.api.data.Transaction;
 import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.CauseStackManager;
@@ -51,6 +50,13 @@ import org.spongepowered.api.event.SpongeEventFactory;
 import org.spongepowered.api.event.cause.entity.SpawnType;
 import org.spongepowered.api.event.cause.entity.SpawnTypes;
 import org.spongepowered.api.event.entity.SpawnEntityEvent;
+import org.spongepowered.api.event.item.inventory.ChangeInventoryEvent;
+import org.spongepowered.api.event.item.inventory.container.ClickContainerEvent;
+import org.spongepowered.api.item.inventory.Container;
+import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.ItemStackSnapshot;
+import org.spongepowered.api.item.inventory.Slot;
+import org.spongepowered.api.item.inventory.transaction.SlotTransaction;
 import org.spongepowered.api.util.Tuple;
 import org.spongepowered.api.world.BlockChangeFlag;
 import org.spongepowered.api.world.World;
@@ -71,6 +77,7 @@ import org.spongepowered.common.event.tracking.phase.tick.TickPhase;
 import org.spongepowered.common.world.BlockChange;
 
 import java.util.ArrayDeque;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -392,5 +399,29 @@ public interface IPhaseState<C extends PhaseContext<C>> {
         final TickNextTickData<?> entry
     ) {
 
+    }
+
+    default Supplier<ServerLevel> attemptWorldKey(final C context) {
+        return () -> {
+            throw new IllegalStateException("Unable to provide a ServerLevel");
+        };
+    }
+
+    default @Nullable ClickContainerEvent createContainerEvent(
+        final C context, final Cause cause,
+        final ServerPlayer serverPlayer, final Container openContainer,
+        final Transaction<ItemStackSnapshot> transaction,
+        final List<SlotTransaction> slotTransactions, final List<org.spongepowered.api.entity.Entity> capturedEntities,
+        final int usedButton, final @Nullable Slot slot
+    ) {
+        return null;
+    }
+
+    default void restoreClickContainerEvent(C context, ClickContainerEvent event) {
+
+    }
+
+    default boolean doesContainerCaptureEntitySpawn(C context, Entity entityIn) {
+        return false;
     }
 }

@@ -24,16 +24,38 @@
  */
 package org.spongepowered.common.event;
 
-import static org.spongepowered.common.event.tracking.phase.packet.PacketPhaseUtil.handleCustomCursor;
-
-import org.spongepowered.api.Server;
+import com.google.common.collect.ImmutableList;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.sound.Sound;
+import net.kyori.adventure.text.Component;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.EntityDamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.DirectionalBlock;
+import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
+import net.minecraft.world.level.block.piston.PistonStructureResolver;
+import net.minecraft.world.level.saveddata.maps.MapIndex;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.block.BlockState;
 import org.spongepowered.api.block.entity.Jukebox;
 import org.spongepowered.api.block.transaction.BlockTransaction;
 import org.spongepowered.api.block.transaction.Operations;
-import org.spongepowered.api.data.Transaction;
 import org.spongepowered.api.data.type.HandType;
 import org.spongepowered.api.data.type.InstrumentType;
 import org.spongepowered.api.data.type.NotePitch;
@@ -47,7 +69,6 @@ import org.spongepowered.api.entity.explosive.Explosive;
 import org.spongepowered.api.entity.living.Agent;
 import org.spongepowered.api.entity.living.Living;
 import org.spongepowered.api.entity.living.player.Player;
-import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
 import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.CauseStackManager;
@@ -65,12 +86,10 @@ import org.spongepowered.api.event.entity.DestructEntityEvent;
 import org.spongepowered.api.event.entity.InteractEntityEvent;
 import org.spongepowered.api.event.entity.MoveEntityEvent;
 import org.spongepowered.api.event.entity.RotateEntityEvent;
-import org.spongepowered.api.event.entity.SpawnEntityEvent;
 import org.spongepowered.api.event.entity.ai.SetAITargetEvent;
 import org.spongepowered.api.event.entity.explosive.DetonateExplosiveEvent;
 import org.spongepowered.api.event.item.inventory.DropItemEvent;
 import org.spongepowered.api.event.item.inventory.InteractItemEvent;
-import org.spongepowered.api.event.item.inventory.container.InteractContainerEvent;
 import org.spongepowered.api.event.sound.PlaySoundEvent;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.map.MapInfo;
@@ -91,65 +110,26 @@ import org.spongepowered.common.bridge.CreatorTrackedBridge;
 import org.spongepowered.common.bridge.explosives.ExplosiveBridge;
 import org.spongepowered.common.bridge.map.MapIdTrackerBridge;
 import org.spongepowered.common.bridge.server.level.ServerLevelBridge;
-import org.spongepowered.common.bridge.server.level.ServerPlayerBridge;
 import org.spongepowered.common.bridge.world.TrackedWorldBridge;
 import org.spongepowered.common.bridge.world.WorldBridge;
 import org.spongepowered.common.bridge.world.entity.EntityBridge;
 import org.spongepowered.common.bridge.world.entity.PlatformEntityBridge;
 import org.spongepowered.common.bridge.world.entity.player.PlayerBridge;
-import org.spongepowered.common.bridge.world.inventory.container.TrackedInventoryBridge;
 import org.spongepowered.common.bridge.world.level.chunk.ActiveChunkReferantBridge;
 import org.spongepowered.common.bridge.world.level.chunk.LevelChunkBridge;
-import org.spongepowered.common.entity.EntityUtil;
 import org.spongepowered.common.entity.PlayerTracker;
-import org.spongepowered.common.entity.player.SpongeUserView;
 import org.spongepowered.common.entity.projectile.UnknownProjectileSource;
 import org.spongepowered.common.event.tracking.PhaseContext;
 import org.spongepowered.common.event.tracking.PhaseTracker;
 import org.spongepowered.common.event.tracking.phase.general.GeneralPhase;
-import org.spongepowered.common.inventory.util.ContainerUtil;
 import org.spongepowered.common.item.util.ItemStackUtil;
 import org.spongepowered.common.map.SpongeMapStorage;
 import org.spongepowered.common.registry.provider.DirectionFacingProvider;
 import org.spongepowered.common.util.Constants;
-import org.spongepowered.common.util.PrettyPrinter;
 import org.spongepowered.common.util.VecHelper;
 import org.spongepowered.common.world.server.SpongeLocatableBlockBuilder;
 import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector3i;
-
-import com.google.common.collect.ImmutableList;
-import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.sound.Sound;
-import net.kyori.adventure.text.Component;
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket;
-import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.Container;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.EntityDamageSource;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.InventoryMenu;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.GameRules;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.DirectionalBlock;
-import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
-import net.minecraft.world.level.block.piston.PistonStructureResolver;
-import net.minecraft.world.level.saveddata.maps.MapIndex;
-import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -170,32 +150,6 @@ public final class SpongeCommonEventFactory {
     public static int lastSecondaryPacketTick = 0;
     public static int lastPrimaryPacketTick = 0;
     @Nullable public static WeakReference<net.minecraft.server.level.ServerPlayer> lastAnimationPlayer;
-
-    public static boolean callSpawnEntity(final List<Entity> entities, final PhaseContext<?> context) {
-        PhaseTracker.getCauseStackManager().currentContext().require(EventContextKeys.SPAWN_TYPE);
-        try {
-            final SpawnEntityEvent event = SpongeEventFactory.createSpawnEntityEvent(PhaseTracker.getCauseStackManager().currentCause(), entities);
-            SpongeCommon.post(event);
-            return !event.isCancelled() && EntityUtil.processEntitySpawnsFromEvent(context, event);
-        } catch (final Exception e) {
-            final PrettyPrinter printer = new PrettyPrinter(60).add("Exception trying to create a Spawn Event").centre().hr()
-                .addWrapped(
-                    "Something did not go well trying to create an event or while trying to throw a SpawnEntityEvent. My bet is it's gremlins")
-                .add()
-                .add("At the very least here's some information about what's going to be directly spawned without an event:");
-            printer.add("Entities:");
-            for (final Entity entity : entities) {
-                printer.add(" - " + entity);
-            }
-            printer.add("PhaseContext:");
-            context.printCustom(printer, 4);
-            printer.add();
-            printer.add("Exception:");
-            printer.add(e);
-            printer.log(SpongeCommon.logger(), org.apache.logging.log4j.Level.ERROR);
-            return true;
-        }
-    }
 
     @SuppressWarnings("unchecked")
     public static <T extends net.minecraft.world.entity.Entity> CollideEntityEvent callCollideEntityEvent(
@@ -692,61 +646,6 @@ public final class SpongeCommonEventFactory {
 
             return cancelled;
         }
-    }
-
-    public static InteractContainerEvent.Close callInteractInventoryCloseEvent(final AbstractContainerMenu container, final net.minecraft.server.level.ServerPlayer player,
-            final ItemStackSnapshot lastCursor, final ItemStackSnapshot newCursor, final boolean clientSource) {
-        final Transaction<ItemStackSnapshot> cursorTransaction = new Transaction<>(lastCursor, newCursor);
-        final InteractContainerEvent.Close event =
-                SpongeEventFactory.createInteractContainerEventClose(PhaseTracker.getCauseStackManager().currentCause(), ContainerUtil.fromNative(container), cursorTransaction);
-        SpongeCommon.post(event);
-        if (event.isCancelled()) {
-            if (clientSource && container.getSlot(0) != null) {
-                if (!(container instanceof InventoryMenu)) {
-                    // Inventory closed by client, reopen window and send container
-                    player.containerMenu = container;
-                    final Slot slot = container.getSlot(0);
-                    final Container slotInventory = slot.container;
-                    final net.minecraft.network.chat.Component title;
-                    // TODO get name from last open
-                    if (slotInventory instanceof MenuProvider) {
-                        title = ((MenuProvider) slotInventory).getDisplayName();
-                    } else {
-                        // expected fallback for unknown types
-                        title = null;
-                    }
-                    slotInventory.startOpen(player);
-                    player.connection.send(new ClientboundOpenScreenPacket(container.containerId, container.getType(), title));
-                    // resync data to client
-                    player.refreshContainer(container);
-                } else {
-                    // TODO: Maybe print a warning or throw an exception here?
-                    // The player gui cannot be opened from the
-                    // server so allowing this event to be cancellable when the
-                    // GUI has been closed already would result
-                    // in opening the wrong GUI window.
-                }
-            }
-            // Handle cursor
-            if (!event.cursorTransaction().isValid()) {
-                handleCustomCursor(player, event.cursorTransaction().original());
-            }
-        } else {
-            final TrackedInventoryBridge mixinContainer = (TrackedInventoryBridge) player.containerMenu;
-            mixinContainer.bridge$getCapturedSlotTransactions().clear();
-            mixinContainer.bridge$setCaptureInventory(false);
-            // Handle cursor
-            if (!event.cursorTransaction().isValid()) {
-                handleCustomCursor(player, event.cursorTransaction().original());
-            } else if (event.cursorTransaction().custom().isPresent()) {
-                handleCustomCursor(player, event.cursorTransaction().finalReplacement());
-            }
-            if (!clientSource && player.containerMenu != null && player.connection != null) {
-                player.closeContainer();
-            }
-        }
-
-        return event;
     }
 
     public static SetAITargetEvent callSetAttackTargetEvent(final @Nullable Entity target, final Agent agent) {

@@ -35,6 +35,7 @@ import org.spongepowered.api.event.Cancellable;
 import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.CauseStackManager;
 import org.spongepowered.api.event.Event;
+import org.spongepowered.api.item.inventory.transaction.SlotTransaction;
 import org.spongepowered.common.event.tracking.PhaseContext;
 import org.spongepowered.common.event.tracking.context.transaction.type.TransactionType;
 import org.spongepowered.common.util.PrettyPrinter;
@@ -146,7 +147,7 @@ public abstract class GameTransaction<E extends Event & Cancellable> {
         this.markCancelled();
     }
 
-    public abstract void restore();
+    public abstract void restore(PhaseContext<?> context, E event);
 
     public void markCancelled() {
         this.cancelled = true;
@@ -182,5 +183,16 @@ public abstract class GameTransaction<E extends Event & Cancellable> {
     boolean shouldBuildEventAndRestartBatch(final GameTransaction<@NonNull ?> pointer, final PhaseContext<@NonNull ?> context) {
         return this.getTransactionType() != pointer.getTransactionType()
             || !this.worldKey.equals(pointer.worldKey);
+    }
+
+    public boolean acceptSlotTransaction(
+        final SlotTransaction newTransaction,
+        final Object inventory
+    ) {
+        return false;
+    }
+
+    public boolean acceptEntitySpawn(final PhaseContext<@NonNull ?> current, final Entity entityIn) {
+        return false;
     }
 }
