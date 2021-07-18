@@ -65,6 +65,7 @@ import org.spongepowered.api.world.schematic.PaletteReference;
 import org.spongepowered.api.world.schematic.PaletteType;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
 import org.spongepowered.api.world.volume.stream.StreamOptions;
+import org.spongepowered.api.world.volume.stream.VolumePositionTranslators;
 import org.spongepowered.common.registry.SpongeRegistryKey;
 import org.spongepowered.common.registry.SpongeRegistryType;
 import org.spongepowered.common.test.stub.StubBlock;
@@ -420,7 +421,10 @@ public final class VolumeTransformationTest {
         rotated.blockStateStream(rotated.blockMin(), rotated.blockMax(), StreamOptions.lazily())
             .forEach((rotatedRef, type, x, y, z) -> {
                 final Vector3d transformedPos = new Vector3d(x, y, z);
-                final Vector3d invertedTransformedPos = expectedTransform.inverse().transformPosition(transformedPos);
+                // We have this offset in the stream, so we have to undo it here.
+                final Vector3d invertedTransformedPos = expectedTransform.inverse()
+                        .transformPosition(transformedPos.add(VolumePositionTranslators.BLOCK_OFFSET))
+                        .sub(VolumePositionTranslators.BLOCK_OFFSET);
                 final Vector3i invertedBlockPos = invertedTransformedPos.toInt();
                 final Vector3i expectedPos;
                 Assertions.assertTrue(
