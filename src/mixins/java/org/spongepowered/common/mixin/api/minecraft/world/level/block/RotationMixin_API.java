@@ -29,6 +29,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.util.Angle;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.math.matrix.Matrix4d;
 
 @Mixin(Rotation.class)
 public abstract class RotationMixin_API implements org.spongepowered.api.util.rotation.Rotation {
@@ -38,6 +39,7 @@ public abstract class RotationMixin_API implements org.spongepowered.api.util.ro
     // @formatter:on
 
     private @Nullable Angle impl$angle = null;
+    private @Nullable Matrix4d impl$rotationMatrix = null;
 
     @SuppressWarnings("ConstantConditions")
     @Override
@@ -61,4 +63,13 @@ public abstract class RotationMixin_API implements org.spongepowered.api.util.ro
         }
         return this.impl$angle;
     }
+
+    @Override
+    public Matrix4d toRotationMatrix() {
+        if (this.impl$rotationMatrix == null) {
+            this.impl$rotationMatrix = org.spongepowered.api.util.rotation.Rotation.super.toRotationMatrix();
+        }
+        return this.impl$rotationMatrix;
+    }
+
 }
