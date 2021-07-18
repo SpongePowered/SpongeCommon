@@ -32,16 +32,22 @@ import org.spongepowered.api.fluid.FluidState;
 import org.spongepowered.api.util.Axis;
 import org.spongepowered.api.util.mirror.Mirror;
 import org.spongepowered.api.util.mirror.Mirrors;
+import org.spongepowered.api.util.rotation.Rotation;
 import org.spongepowered.api.util.transformation.Transformation;
 import org.spongepowered.api.world.biome.Biome;
+import org.spongepowered.api.world.volume.Volume;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
+import org.spongepowered.api.world.volume.archetype.block.entity.BlockEntityArchetypeVolume;
 import org.spongepowered.api.world.volume.archetype.entity.EntityArchetypeEntry;
 import org.spongepowered.api.world.volume.archetype.entity.EntityArchetypeVolume;
+import org.spongepowered.api.world.volume.biome.BiomeVolume;
+import org.spongepowered.api.world.volume.block.BlockVolume;
 import org.spongepowered.api.world.volume.stream.StreamOptions;
 import org.spongepowered.api.world.volume.stream.VolumeElement;
 import org.spongepowered.api.world.volume.stream.VolumePositionTranslators;
 import org.spongepowered.api.world.volume.stream.VolumeStream;
 import org.spongepowered.common.util.MemoizedSupplier;
+import org.spongepowered.common.world.volume.VolumeStreamUtils;
 import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector3i;
 
@@ -167,13 +173,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, BlockEntityArchetype> blockEntityArchetypeStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
-        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
-        return this.applyReference(
-            a -> a.blockEntityArchetypeStream(invertedTransformedMin, invertedTransformedMax, options)
-                .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformStreamBlockPosition(e.position())
-                ))
+        return this.applyTransformationsToStream(
+            min,
+            max,
+            options,
+            BlockEntityArchetypeVolume.Streamable::blockEntityArchetypeStream,
+            (e, rotation, mirror) -> e.type()
         );
     }
 
@@ -214,13 +219,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, EntityArchetype> entityArchetypeStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
-        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
-        return this.applyReference(
-            a -> a.entityArchetypeStream(invertedTransformedMin, invertedTransformedMax, options)
-                .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformStreamBlockPosition(e.position())
-                ))
+        return this.applyTransformationsToStream(
+            min,
+            max,
+            options,
+            EntityArchetypeVolume.Streamable::entityArchetypeStream,
+            (e, rotation, mirror) -> e.type()
         );
     }
 
@@ -249,13 +253,12 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, Biome> biomeStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
-        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
-        return this.applyReference(
-            a -> a.biomeStream(invertedTransformedMin, invertedTransformedMax, options)
-                .transform(e -> VolumeElement.of(this, e::type,
-                    this.transformStreamBlockPosition(e.position())
-                ))
+        return this.applyTransformationsToStream(
+            min,
+            max,
+            options,
+            BiomeVolume.Streamable::biomeStream,
+            (e, rotation, mirror) -> e.type()
         );
     }
 
@@ -287,24 +290,14 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, BlockState> blockStateStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i transformedMin = this.blockMin();
-        final Vector3i transformedMax = this.blockMax();
-        final Vector3i minDiff = min.sub(transformedMin);
-        final Vector3i maxDiff = transformedMax.sub(max);
-        final boolean xMirror = this.transformation.mirror(Axis.X);
-        final boolean zMirror = this.transformation.mirror(Axis.Z);
-        final Supplier<Mirror> mirror = xMirror
-            ? Mirrors.FRONT_BACK
-            : zMirror ? Mirrors.LEFT_RIGHT : Mirrors.NONE;
-        return this.applyReference(
-            a -> a.blockStateStream(a.blockMin().add(minDiff), a.blockMax().sub(maxDiff), options)
-                .transform(e -> VolumeElement.of(this,
-                    () -> e.type()
-                        // Order of operations matters here, block states need to be mirrored first, then rotated
-                        .mirror(mirror)
-                        .rotate(this.transformation.rotation()),
-                    this.transformStreamBlockPosition(e.position().add(VolumePositionTranslators.BLOCK_OFFSET)).sub(VolumePositionTranslators.BLOCK_OFFSET)
-                ))
+        return this.applyTransformationsToStream(
+            min,
+            max,
+            options,
+            BlockVolume.Streamable::blockStateStream,
+            (e, rotation, mirror) -> e.type()
+                    .mirror(mirror)
+                    .rotate(rotation)
         );
     }
 
@@ -318,5 +311,40 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public boolean removeBlock(final int x, final int y, final int z) {
         final Vector3i transformed = this.inverseTransform(x, y, z);
         return this.applyReference(a -> a.removeBlock(transformed.x(), transformed.y(), transformed.z()));
+    }
+
+    protected interface StreamCreator<TA extends Volume, SE> {
+        VolumeStream<ArchetypeVolume, SE> createStream(
+            TA targetVolume,
+            Vector3i min,
+            Vector3i max,
+            StreamOptions options
+        );
+    }
+
+    private <T> VolumeStream<ArchetypeVolume, T> applyTransformationsToStream(
+        final Vector3i min,
+        final Vector3i max,
+        final StreamOptions options,
+        final StreamCreator<A, T> streamCreator,
+        final VolumeStreamUtils.TriFunction<VolumeElement<ArchetypeVolume, T>, Supplier<Rotation>, Supplier<Mirror>, T> elementTransform
+    ) {
+        final Vector3i transformedMin = this.blockMin();
+        final Vector3i transformedMax = this.blockMax();
+        VolumeStreamUtils.validateStreamArgs(min, max, transformedMin, transformedMax, options);
+        final Vector3i minDiff = min.sub(transformedMin);
+        final Vector3i maxDiff = transformedMax.sub(max);
+        final boolean xMirror = this.transformation.mirror(Axis.X);
+        final boolean zMirror = this.transformation.mirror(Axis.Z);
+        final Supplier<Mirror> mirror = xMirror
+            ? Mirrors.FRONT_BACK
+            : zMirror ? Mirrors.LEFT_RIGHT : Mirrors.NONE;
+        return this.applyReference(a -> streamCreator.createStream(a, a.blockMin().add(minDiff), a.blockMax().sub(maxDiff), options))
+            .transform(e -> VolumeElement.of(
+                this,
+                elementTransform.apply(e, this.transformation::rotation, mirror),
+                this.transformStreamBlockPosition(e.position().add(VolumePositionTranslators.BLOCK_OFFSET)).sub(VolumePositionTranslators.BLOCK_OFFSET)
+            ));
+
     }
 }

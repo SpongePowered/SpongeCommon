@@ -329,11 +329,11 @@ public final class VolumeStreamUtils {
         return true;
     }
 
-    private interface TriFunction<A, B, C, Out> {
+    public interface TriFunction<A, B, C, Out> {
         Out apply(A a, B b, C c);
     }
 
-    private interface QuadFunction<A, B, C, D, Out> {
+    public interface QuadFunction<A, B, C, D, Out> {
 
         Out apply(A a, B b, C c, D d);
 
