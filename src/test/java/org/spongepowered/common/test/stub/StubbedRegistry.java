@@ -50,7 +50,7 @@ public class StubbedRegistry<T> implements Registry<T> {
     }
 
     public T createEntry(final String namespace, final String desired) {
-        final ResourceKey key = ResourceKey.of(namespace, desired);
+        final ResourceKey key = new StubKey(namespace, desired);
         return this.getOrCreate(key);
     }
 

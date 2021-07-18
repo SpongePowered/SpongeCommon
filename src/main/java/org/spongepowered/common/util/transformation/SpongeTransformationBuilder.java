@@ -30,7 +30,6 @@ import org.spongepowered.api.util.Axis;
 import org.spongepowered.api.util.rotation.Rotation;
 import org.spongepowered.api.util.rotation.Rotations;
 import org.spongepowered.api.util.transformation.Transformation;
-import org.spongepowered.math.imaginary.Quaterniond;
 import org.spongepowered.math.matrix.Matrix4d;
 import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector4d;
@@ -73,9 +72,9 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
 
     @Override
     public @NonNull SpongeTransformationBuilder rotate(final @NonNull Rotation rotation) {
-        final Quaterniond rotationQuaternion = Quaterniond.fromAngleDegAxis(-rotation.angle().degrees(), Axis.Y.toVector3d());
-        this.transformation = this.transformation.rotate(rotationQuaternion);
-        this.directionTransformation = this.directionTransformation.rotate(rotationQuaternion);
+        final Matrix4d rotationMatrix = rotation.toRotationMatrix();
+        this.transformation = rotationMatrix.mul(this.transformation);
+        this.directionTransformation = rotationMatrix.mul(this.directionTransformation);
         if (this.rotation == null) {
             this.rotation = rotation;
         } else {
@@ -118,13 +117,20 @@ public final class SpongeTransformationBuilder implements Transformation.Builder
 
     @Override
     public @NonNull SpongeTransformation build() {
-        return new SpongeTransformation(this.origin,
-                this.transformation.mul(Matrix4d.createTranslation(this.origin.mul(-1))).translate(this.origin),
-                this.directionTransformation,
-                this.performRounding,
-                this.rotation == null ? Rotations.NONE.get() : this.rotation,
-                this.flipx,
-                this.flipz);
+        final Matrix4d partialRotation = this.transformation.translate(this.origin);
+        final Matrix4d invertedMatrix = Matrix4d.createTranslation(this.origin.mul(-1));
+        final Matrix4d rotatedAroundOrigin = partialRotation.mul(invertedMatrix);
+        final SpongeTransformation transformation = new SpongeTransformation(
+            this.origin,
+            rotatedAroundOrigin,
+            this.directionTransformation,
+            this.performRounding,
+            this.rotation == null ? Rotations.NONE.get() : this.rotation,
+            this.flipx,
+            this.flipz
+        );
+        this.reset();
+        return transformation;
     }
 
 }

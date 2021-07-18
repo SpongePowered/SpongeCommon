@@ -42,16 +42,16 @@ final class TransformationTest {
 
     private static Stream<Arguments> testRotatingAroundOrigin90DegreesAroundYAxis() {
         return Stream.of(
-                Arguments.of(new Vector3d( 1, 0,  0), new Vector3d( 0, 0, -1)),
-                Arguments.of(new Vector3d( 1, 1,  0), new Vector3d( 0, 1, -1)),
-                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d( 0, 1,  1)),
-                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( 1, 1,  0)),
-                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d(-1, 1,  0)),
+                Arguments.of(new Vector3d( 1, 0,  0), new Vector3d( 0, 0, 1)),
+                Arguments.of(new Vector3d( 1, 1,  0), new Vector3d( 0, 1, 1)),
+                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d( 0, 1,  -1)),
+                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( -1, 1,  0)),
+                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d(1, 1,  0)),
                 Arguments.of(new Vector3d( 0, 0,  0), new Vector3d( 0, 0,  0)),
                 Arguments.of(new Vector3d( 0, 1,  0), new Vector3d( 0, 1,  0)),
-                Arguments.of(new Vector3d(-2, 1,  0), new Vector3d( 0, 1,  2)),
-                Arguments.of(new Vector3d(-1, 1,  1), new Vector3d( 1, 1,  1)),
-                Arguments.of(new Vector3d(-1, 1, -1), new Vector3d(-1, 1,  1))
+                Arguments.of(new Vector3d(-2, 1,  0), new Vector3d( 0, 1,  -2)),
+                Arguments.of(new Vector3d(-1, 1,  1), new Vector3d( -1, 1,  -1)),
+                Arguments.of(new Vector3d(-1, 1, -1), new Vector3d(1, 1,  -1))
         );
     }
 
@@ -89,9 +89,9 @@ final class TransformationTest {
         return Stream.of(
                 Arguments.of(new Vector3d( 1, 0,  0), new Vector3d( 1, 0,  0), new Vector3d( 1, 0, 0)),
                 Arguments.of(new Vector3d( 1, 1,  0), new Vector3d( 1, 1,  0), new Vector3d( 1, 0, 0)),
-                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d( 1, 1,  2), new Vector3d( 1, 0, 0)),
-                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( 2, 1,  1), new Vector3d( 1, 0, 0)),
-                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d( 0, 1,  1), new Vector3d( 1, 0, 0))
+                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d( 1, 1,  -2), new Vector3d( 1, 0, 0)),
+                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( 0, 1,  -1), new Vector3d( 1, 0, 0)),
+                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d( 2, 1,  -1), new Vector3d( 1, 0, 0))
         );
     }
 
@@ -127,7 +127,8 @@ final class TransformationTest {
 
     private static SpongeTransformationBuilder createZeroBuilder() {
         final SpongeTransformationBuilder transformationBuilder = new SpongeTransformationBuilder();
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        final Rotation mockRotation = Mockito.mock(Rotation.class, Mockito.withSettings()
+            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
         Mockito.when(mockRotation.angle()).thenReturn(Angle.fromDegrees(0));
         transformationBuilder.rotate(mockRotation);
         return transformationBuilder;
@@ -137,7 +138,8 @@ final class TransformationTest {
     @MethodSource
     void testRotatingAroundOrigin90DegreesAroundYAxis(final Vector3d original, final Vector3d expected) {
         // and this rotation
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        final Rotation mockRotation = Mockito.mock(Rotation.class, Mockito.withSettings()
+            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
         Mockito.when(mockRotation.angle()).thenReturn(Angle.fromDegrees(90));
 
         this.performRotationTest(mockRotation, original, expected);
@@ -147,7 +149,8 @@ final class TransformationTest {
     @MethodSource
     void testRotatingAroundOrigin180DegreesAroundYAxis(final Vector3d original, final Vector3d expected) {
         // and this rotation
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        final Rotation mockRotation = Mockito.mock(Rotation.class, Mockito.withSettings()
+            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
         Mockito.when(mockRotation.angle()).thenReturn(Angle.fromDegrees(180));
 
         this.performRotationTest(mockRotation, original, expected);
@@ -157,11 +160,13 @@ final class TransformationTest {
     @MethodSource("testRotatingAroundOrigin180DegreesAroundYAxis")
     void testRotatingAroundOrigin180DegreesAroundYAxisWithTwoSteps(final Vector3d original, final Vector3d expected) {
         // and this rotation
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        final Rotation mockRotation = Mockito.mock(Rotation.class, Mockito.withSettings()
+            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
         Mockito.when(mockRotation.angle()).thenReturn(Angle.fromDegrees(90));
         Mockito.when(mockRotation.and(Mockito.any(Rotation.class))).thenAnswer((Answer<Rotation>) invocation -> {
             final Rotation rotation = invocation.getArgument(0);
-            final Rotation newMock = Mockito.mock(Rotation.class);
+            final Rotation newMock = Mockito.mock(Rotation.class, Mockito.withSettings()
+                .defaultAnswer(Mockito.CALLS_REAL_METHODS));
             Mockito.when(newMock.angle()).thenAnswer((Answer<Angle>) x -> Angle.fromDegrees(rotation.angle().degrees() + 90));
             return newMock;
         });
@@ -205,7 +210,8 @@ final class TransformationTest {
     @ParameterizedTest
     @MethodSource
     void testRotatingAroundOrigin90DegreesAroundYAxisAtDisplacedOrigin(final Vector3d original, final Vector3d expected, final Vector3d origin) {
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        final Rotation mockRotation = Mockito.mock(Rotation.class, Mockito.withSettings()
+            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
         Mockito.when(mockRotation.angle()).thenReturn(Angle.fromDegrees(90));
 
         this.performRotationTest(mockRotation, original, expected, origin, 1);
@@ -218,7 +224,8 @@ final class TransformationTest {
         final SpongeTransformationBuilder transformationBuilder = new SpongeTransformationBuilder();
 
         // and this rotation
-        final Rotation mockRotation = Mockito.mock(Rotation.class);
+        final Rotation mockRotation = Mockito.mock(Rotation.class, Mockito.withSettings()
+            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
         Mockito.when(mockRotation.angle()).thenReturn(Angle.fromDegrees(90));
 
         // when rotating by 90 degrees with this translation

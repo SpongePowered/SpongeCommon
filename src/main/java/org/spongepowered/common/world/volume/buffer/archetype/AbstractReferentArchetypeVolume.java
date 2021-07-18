@@ -39,6 +39,7 @@ import org.spongepowered.api.world.volume.archetype.entity.EntityArchetypeEntry;
 import org.spongepowered.api.world.volume.archetype.entity.EntityArchetypeVolume;
 import org.spongepowered.api.world.volume.stream.StreamOptions;
 import org.spongepowered.api.world.volume.stream.VolumeElement;
+import org.spongepowered.api.world.volume.stream.VolumePositionTranslators;
 import org.spongepowered.api.world.volume.stream.VolumeStream;
 import org.spongepowered.common.util.MemoizedSupplier;
 import org.spongepowered.math.vector.Vector3d;
@@ -58,7 +59,7 @@ import java.util.stream.Stream;
 
 public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implements ArchetypeVolume {
 
-    private final Supplier<A> reference;
+    protected final Supplier<A> reference;
     protected final Transformation transformation;
 
     protected AbstractReferentArchetypeVolume(final Supplier<A> reference, final Transformation transformation) {
@@ -89,11 +90,13 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     }
 
     protected Vector3i transformBlockSizes(final Vector3i min, final Vector3i max, final BiFunction<Vector3i, Vector3i, Vector3i> minmax) {
-        final Vector3d rawBlockMin = min.toDouble();
+        final Vector3d rawBlockMin = min.toDouble().add(VolumePositionTranslators.BLOCK_OFFSET);
         final Vector3i transformedMin = this.transformation.transformPosition(rawBlockMin)
+            .sub(VolumePositionTranslators.BLOCK_OFFSET)
             .toInt();
-        final Vector3d rawBlockMax = max.toDouble();
+        final Vector3d rawBlockMax = max.toDouble().add(VolumePositionTranslators.BLOCK_OFFSET);
         final Vector3i transformedMax = this.transformation.transformPosition(rawBlockMax)
+            .sub(VolumePositionTranslators.BLOCK_OFFSET)
             .toInt();
         return minmax.apply(transformedMin, transformedMax);
     }
@@ -284,15 +287,17 @@ public class AbstractReferentArchetypeVolume<A extends ArchetypeVolume> implemen
     public VolumeStream<ArchetypeVolume, BlockState> blockStateStream(
         final Vector3i min, final Vector3i max, final StreamOptions options
     ) {
-        final Vector3i invertedTransformedMin = this.transformBlockSizes(min, max, Vector3i::min);
-        final Vector3i invertedTransformedMax = this.transformBlockSizes(min, max, Vector3i::max);
+        final Vector3i transformedMin = this.blockMin();
+        final Vector3i transformedMax = this.blockMax();
+        final Vector3i minDiff = min.sub(transformedMin);
+        final Vector3i maxDiff = transformedMax.sub(max);
         final boolean xMirror = this.transformation.mirror(Axis.X);
         final boolean zMirror = this.transformation.mirror(Axis.Z);
         final Supplier<Mirror> mirror = xMirror
             ? Mirrors.FRONT_BACK
             : zMirror ? Mirrors.LEFT_RIGHT : Mirrors.NONE;
         return this.applyReference(
-            a -> a.blockStateStream(invertedTransformedMin, invertedTransformedMax, options)
+            a -> a.blockStateStream(a.blockMin().add(minDiff), a.blockMax().sub(maxDiff), options)
                 .transform(e -> VolumeElement.of(this,
                     () -> e.type()
                         // Order of operations matters here, block states need to be mirrored first, then rotated

@@ -33,7 +33,6 @@ import org.spongepowered.api.world.schematic.Palette;
 import org.spongepowered.api.world.schematic.PaletteReference;
 import org.spongepowered.api.world.schematic.PaletteType;
 
-import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,8 +41,8 @@ import java.util.stream.Stream;
 
 public final class ImmutableBimapPalette<T, R> implements Palette.Immutable<T, R> {
 
-    private final ImmutableBiMap<Integer, PaletteReference<T, R>> ids;
-    private final ImmutableBiMap<PaletteReference<T, R>, Integer> idsr;
+    private final ImmutableBiMap<Integer, T> ids;
+    private final ImmutableBiMap<T, Integer> idsr;
     private final PaletteType<T, R> paletteType;
     private final int maxId;
     private final Registry<R> registry;
@@ -51,9 +50,9 @@ public final class ImmutableBimapPalette<T, R> implements Palette.Immutable<T, R
     public ImmutableBimapPalette(
         final PaletteType<T, R> paletteType,
         final Registry<R> registry,
-        final BiMap<Integer, PaletteReference<T, R>> reference
+        final BiMap<Integer, T> reference
     ) {
-        final ImmutableBiMap.Builder<Integer, PaletteReference<T, R>> builder = ImmutableBiMap.builder();
+        final ImmutableBiMap.Builder<Integer, T> builder = ImmutableBiMap.builder();
         reference.forEach(builder::put);
         this.ids = builder.build();
         this.idsr = this.ids.inverse();
@@ -80,8 +79,7 @@ public final class ImmutableBimapPalette<T, R> implements Palette.Immutable<T, R
 
     @Override
     public OptionalInt get(final T state) {
-        final PaletteReference<T, R> ref = MutableBimapPalette.createPaletteReference(state, this.paletteType, this.registry);
-        final Integer value = this.idsr.get(ref);
+        final Integer value = this.idsr.get(state);
         if (value == null) {
             return OptionalInt.empty();
         }
@@ -90,27 +88,18 @@ public final class ImmutableBimapPalette<T, R> implements Palette.Immutable<T, R
 
     @Override
     public Optional<PaletteReference<T, R>> get(final int id) {
-        return Optional.ofNullable(this.ids.get(id));
+        return Optional.ofNullable(this.ids.get(id))
+            .map(type -> MutableBimapPalette.createPaletteReference(type, this.paletteType, this.registry));
     }
 
     @Override
     public Stream<T> stream() {
-        return this.idsr.keySet().stream()
-            .map(ref -> this.paletteType.resolver().apply(ref.value(), this.registry))
-            .filter(Optional::isPresent)
-            .map(Optional::get);
+        return this.idsr.keySet().stream();
     }
 
     @Override
     public Stream<Map.Entry<T, Integer>> streamWithIds() {
-        return this.ids.entrySet().stream()
-            .map(entry -> {
-                final Optional<T> apply = this.paletteType.resolver().apply(entry.getValue()
-                    .value(), this.registry);
-                return apply.map(value -> new AbstractMap.SimpleEntry<>(value, entry.getKey()));
-            })
-            .filter(Optional::isPresent)
-            .map(Optional::get);
+        return this.idsr.entrySet().stream();
     }
 
     @Override

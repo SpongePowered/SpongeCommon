@@ -367,13 +367,12 @@ public final class VolumeStreamTest implements LoadableModule {
                     }
                     final ServerPlayer player = (ServerPlayer) src.cause().root();
                     final Rotation desiredRotation = src.requireOne(rotation);
-                    final Schematic schematic;
                     final PlayerData data = VolumeStreamTest.get(player);
                     if (data.clipboard == null) {
                         throw new CommandException(Component.text("Load a clipboard first before trying to rotate it"));
                     }
                     final ArchetypeVolume newClipboard = data.clipboard.transform(Transformation.builder()
-                        .origin(data.clipboard.blockMin().toDouble().add(data.clipboard.blockSize().toDouble().div(2).sub(0.5, 0.5, 0.5)))
+                        .origin(data.clipboard.logicalCenter())
                         .rotate(desiredRotation)
                         .build());
                     src.sendMessage(Identity.nil(), Component.text("Rotated clipboard " + desiredRotation.angle().degrees() + " degrees"));

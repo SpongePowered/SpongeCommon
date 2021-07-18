@@ -25,8 +25,10 @@
 package org.spongepowered.common.util.transformation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -63,9 +65,9 @@ import org.spongepowered.api.world.schematic.PaletteReference;
 import org.spongepowered.api.world.schematic.PaletteType;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
 import org.spongepowered.api.world.volume.stream.StreamOptions;
-import org.spongepowered.api.world.volume.stream.VolumePositionTranslators;
 import org.spongepowered.common.registry.SpongeRegistryKey;
 import org.spongepowered.common.registry.SpongeRegistryType;
+import org.spongepowered.common.test.stub.StubBlock;
 import org.spongepowered.common.test.stub.StubBlockStatePaletteType;
 import org.spongepowered.common.test.stub.StubKey;
 import org.spongepowered.common.test.stub.StubPaletteType;
@@ -84,10 +86,13 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+@SuppressWarnings("rawtypes")
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public final class VolumeTransformationTest {
 
+    private static final Vector3i INVALID_STUB_POSITION = Vector3i.from(
+        Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE);
     @Mock Game game;
     @Mock
     FactoryProvider factoryProvider;
@@ -97,7 +102,6 @@ public final class VolumeTransformationTest {
     RegistryHolder testholder;
     private MockedStatic<Sponge> spongeMock;
 
-    @SuppressWarnings("unchecked")
     @BeforeEach
     void setup() {
         this.spongeMock = Mockito.mockStatic(Sponge.class);
@@ -107,7 +111,9 @@ public final class VolumeTransformationTest {
         final Registry<Rotation> rotation = new StubbedRegistry<>(
             () -> RegistryTypes.ROTATION,
             (k) -> {
-                final Rotation rot = mock(Rotation.class);
+                final Rotation rot = mock(Rotation.class, withSettings()
+                    .defaultAnswer(CALLS_REAL_METHODS)
+                );
                 final String value = k.value();
                 if ("none".equals(value)) {
                     when(rot.angle()).thenReturn(Angle.fromDegrees(0));
@@ -165,36 +171,7 @@ public final class VolumeTransformationTest {
         // Set up Blocks and BlockState
         final StubbedRegistry<BlockType> blocktypes = new StubbedRegistry<>(
             () -> RegistryTypes.BLOCK_TYPE,
-            (key) -> {
-                final BlockType type = mock(BlockType.class);
-                when(type.doesUpdateRandomly())
-                    .thenReturn(false);
-                when(type.isAnyOf(any(Supplier.class)))
-                    .thenReturn(false);
-                when(type.isAnyOf(any(BlockType.class)))
-                    .thenAnswer((a) -> a.getArgument(0, BlockType.class) == type);
-                final Vector3i deducedPos;
-                final String value = key.value();
-                if (value.startsWith("volumetest")) {
-                    final String replace = value.replace("volumetest{", "")
-                        .replace("}", "");
-                    final String[] split = replace.split(",");
-                    if (split.length == 3) {
-                        final int x = Integer.parseInt(split[0].replace(" ", ""));
-                        final int y = Integer.parseInt(split[1].replace(" ", ""));
-                        final int z = Integer.parseInt(split[2].replace(" ", ""));
-                        deducedPos = new Vector3i(x, y, z);
-                    } else {
-                        deducedPos = Vector3i.ZERO.sub(Vector3i.ONE);
-                    }
-                } else {
-                    deducedPos = Vector3i.ZERO.sub(Vector3i.ONE);
-                }
-                final BlockState air = new StubState(type, key, deducedPos);
-                when(type.defaultState())
-                    .thenReturn(air);
-                return type;
-            }
+            StubBlock::new
         );
         // Set up biomes
         final Registry<Biome> biomes = new StubbedRegistry<>(
@@ -245,7 +222,6 @@ public final class VolumeTransformationTest {
         paletteTypeRegistry.register(ResourceKey.sponge("block_state_palette"), new StubBlockStatePaletteType());
     }
 
-
     @AfterEach
     void closeSponge() {
         this.spongeMock.close();
@@ -253,30 +229,122 @@ public final class VolumeTransformationTest {
 
     private static Stream<Arguments> testTransformationsOfPositions() {
         return Stream.of(
-            Arguments.of(Vector3i.ZERO, Vector3i.from(2, 2, 2), Vector3i.ZERO, Vector3i.from(1, 1, 1), 0),
-            Arguments.of(Vector3i.ZERO, Vector3i.from(2, 2, 2), Vector3i.ZERO, Vector3i.from(1, 1, 1), 1),
             Arguments.of(
-                Vector3i.from(1, -1, -1),
-                Vector3i.from(2, 1, 0),
                 Vector3i.ZERO,
-                Vector3i.from(1, -1, -1),
-                1
+                Vector3i.from(2, 2, 2),
+                Vector3i.ZERO,
+                Vector3i.from(1, 1, 1),
+                0,
+                RotationWanted.WantNone
+            ),
+            Arguments.of(
+                Vector3i.ZERO,
+                Vector3i.from(2, 2, 2),
+                Vector3i.UNIT_X,
+                Vector3i.from(1, 1, 1),
+                1,
+                RotationWanted.Want90
+            ),
+            Arguments.of(
+                Vector3i.ZERO,
+                Vector3i.from(2, 2, 2),
+                Vector3i.from(-1, 1, 4),
+                Vector3i.from(1, 1, 1),
+                0,
+                RotationWanted.WantNone
+            ),
+            Arguments.of(
+                Vector3i.ZERO,
+                Vector3i.from(2, 2, 2),
+                Vector3i.from(-1, 1, 4),
+                Vector3i.from(1, 1, 1),
+                1,
+                RotationWanted.Want90
             ),
             Arguments.of(
                 Vector3i.from(1, -1, -1),
                 Vector3i.from(2, 1, 0),
                 Vector3i.ZERO,
                 Vector3i.from(1, -1, -1),
-                2 // should be exactly the same again
+                1,
+                RotationWanted.Want90
+            ),
+            Arguments.of(
+                Vector3i.from(1, -1, -1),
+                Vector3i.from(2, 1, 0),
+                Vector3i.ZERO,
+                Vector3i.from(1, -1, -1),
+                2,
+                RotationWanted.Want270
+            ),
+            Arguments.of(
+                Vector3i.from(1, -1, -1),
+                Vector3i.from(2, 1, 0),
+                Vector3i.ZERO,
+                Vector3i.from(1, -1, -1),
+                4,
+                RotationWanted.Want180
+            ),
+            Arguments.of(
+                Vector3i.from(-4, -1, -5),
+                Vector3i.from(10, 7, 9),
+                Vector3i.ZERO,
+                Vector3i.from(1, -3, -1),
+                8,
+                RotationWanted.Want90
+            ),
+            Arguments.of(
+                Vector3i.from(-4, -1, -5),
+                Vector3i.from(10, 7, 9),
+                Vector3i.from(-8, 3, -7),
+                Vector3i.from(1, -3, -1),
+                8,
+                RotationWanted.Want90
+            ),
+            Arguments.of(
+                Vector3i.from(-2, -4, -3),
+                Vector3i.from(9, 1, 7),
+                Vector3i.from(-6, 2, -4),
+                Vector3i.from(1, -3, -1),
+                8,
+                RotationWanted.Want90
             )
         );
+    }
+    enum RotationWanted {
+        Want90() {
+            @Override
+            Supplier<Rotation> getRotation() {
+                return Rotations.CLOCKWISE_90;
+            }
+        },
+        Want180() {
+            @Override
+            Supplier<Rotation> getRotation() {
+                return Rotations.CLOCKWISE_180;
+            }
+        },
+        Want270() {
+            @Override
+            Supplier<Rotation> getRotation() {
+                return Rotations.COUNTERCLOCKWISE_90;
+            }
+        },
+        WantNone() {
+            @Override
+            Supplier<Rotation> getRotation() {
+                return Rotations.NONE;
+            }
+        };
+
+        abstract Supplier<Rotation> getRotation();
     }
 
     @MethodSource("testTransformationsOfPositions")
     @ParameterizedTest
     void testTransformationsOfPositions(
         final Vector3i min, final Vector3i max, final Vector3i origin, final Vector3i testForRoundTrip,
-        final int rotationCount
+        final int rotationCount, final RotationWanted wanted
     ) {
         final Vector3i rawMin = min.min(max);
         final Vector3i rawMax = max.max(min);
@@ -299,19 +367,18 @@ public final class VolumeTransformationTest {
             });
         });
 
-        final Vector3d center = volume.blockMin().toDouble()
-            .add(volume.blockSize().toDouble().div(2).sub(VolumePositionTranslators.BLOCK_OFFSET));
+        final Vector3d center = volume.logicalCenter();
 
         ArchetypeVolume intermediary = volume;
         for (int i = 0; i < rotationCount; i++) {
             intermediary = intermediary.transform(Transformation.builder()
                 .origin(center)
-                .rotate(Rotations.CLOCKWISE_90.get())
+                .rotate(wanted.getRotation().get())
                 .build());
         }
         Rotation expected = Rotations.NONE.get();
         for (int i = 0; i < rotationCount; i++) {
-            expected = expected.and(Rotations.CLOCKWISE_90.get());
+            expected = expected.and(wanted.getRotation().get());
         }
         final Transformation expectedTransform = Transformation.builder()
             .origin(center)
@@ -320,9 +387,11 @@ public final class VolumeTransformationTest {
         final ArchetypeVolume rotated = intermediary;
         if (rotationCount > 0) {
             final Vector3d preliminaryTransformed = expectedTransform.transformPosition(testForRoundTrip.toDouble());
-            final Vector3i roundedTransformed = preliminaryTransformed.round().toInt();
-            final Vector3i unTransformed = ((AbstractReferentArchetypeVolume) rotated).inverseTransform(
-                roundedTransformed.x(), roundedTransformed.y(), roundedTransformed.z());
+            Vector3i unTransformed = preliminaryTransformed.round().toInt();
+            for (int i = 0; i < rotationCount; i++) {
+                unTransformed = ((AbstractReferentArchetypeVolume) rotated).inverseTransform(
+                    unTransformed.x(), unTransformed.y(), unTransformed.z());
+            }
             Assertions.assertEquals(testForRoundTrip, unTransformed);
         }
         for (int x = 0; x < size.x(); x++) {
@@ -335,14 +404,11 @@ public final class VolumeTransformationTest {
                     final BlockState untransformedState = volume.block(relativeX, relativeY, relativeZ);
                     final Vector3i transformedPosition = expectedTransform.transformPosition(rawRelativePosition).toInt();
                     final BlockState transformedState = rotated.block(transformedPosition.x(), transformedPosition.y(), transformedPosition.z());
-                    System.out.println("Block Check");
-                    System.out.printf(
-                        "Original(%d, %d, %d): %s\n", relativeX, relativeY, relativeZ, untransformedState);
-                    System.out.printf(
-                        "Transformed(%d, %d, %d): %s\n", transformedPosition.x(), transformedPosition.y(),
-                        transformedPosition.z(), transformedState
-                    );
-                    Assertions.assertEquals(untransformedState, transformedState);
+                    Assertions.assertEquals(untransformedState, transformedState, () -> String.format(
+                        "Block Check Failed!\nOriginal(%d, %d, %d): %s\nTransformed(%d, %d, %d): %s\n",
+                        relativeX, relativeY, relativeZ, untransformedState,
+                        transformedPosition.x(), transformedPosition.y(),
+                        transformedPosition.z(), transformedState));
                 }
             }
         }
@@ -363,7 +429,8 @@ public final class VolumeTransformationTest {
                         type
                     )
                 );
-                Assertions.assertNotEquals(((StubState) type).deducedPos, Vector3i.ZERO.sub(Vector3i.ONE),
+                Assertions.assertNotEquals(((StubState) type).deducedPos,
+                    VolumeTransformationTest.INVALID_STUB_POSITION,
                     () -> String.format("expected to have a positioned stub state: [%f, %f, %f] but got %s", x, y, z,
                         type
                     )
