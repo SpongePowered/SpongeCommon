@@ -89,9 +89,10 @@ final class TransformationTest {
         return Stream.of(
                 Arguments.of(new Vector3d( 1, 0,  0), new Vector3d( 1, 0,  0), new Vector3d( 1, 0, 0)),
                 Arguments.of(new Vector3d( 1, 1,  0), new Vector3d( 1, 1,  0), new Vector3d( 1, 0, 0)),
-                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d( 1, 1,  -2), new Vector3d( 1, 0, 0)),
-                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( 0, 1,  -1), new Vector3d( 1, 0, 0)),
-                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d( 2, 1,  -1), new Vector3d( 1, 0, 0))
+                Arguments.of(new Vector3d(-1, 1,  0), new Vector3d( 1, 1, -2), new Vector3d( 1, 0, 0)),
+                Arguments.of(new Vector3d( 0, 1,  1), new Vector3d( 0, 1, -1), new Vector3d( 1, 0, 0)),
+                Arguments.of(new Vector3d( 0, 1, -1), new Vector3d( 2, 1, -1), new Vector3d( 1, 0, 0)),
+                Arguments.of(new Vector3d( 2, 0,  2), new Vector3d( 0, 0,  2), new Vector3d( 1, 0, 1))
         );
     }
 
