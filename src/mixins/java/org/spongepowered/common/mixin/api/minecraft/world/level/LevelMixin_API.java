@@ -57,6 +57,7 @@ import org.spongepowered.api.entity.Entity;
 import org.spongepowered.api.entity.EntityType;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.service.context.Context;
+import org.spongepowered.api.util.AABB;
 import org.spongepowered.api.world.HeightTypes;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.ProtoWorld;
@@ -74,10 +75,11 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.common.accessor.server.level.ChunkMapAccessor;
 import org.spongepowered.common.adventure.SpongeAdventure;
 import org.spongepowered.common.bridge.world.level.LevelBridge;
+import org.spongepowered.common.bridge.world.level.chunk.LevelChunkBridge;
 import org.spongepowered.common.effect.particle.SpongeParticleHelper;
 import org.spongepowered.common.effect.record.SpongeMusicDisc;
 import org.spongepowered.common.util.Constants;
-import org.spongepowered.common.util.MissingImplementationException;
+import org.spongepowered.common.util.VecHelper;
 import org.spongepowered.common.world.storage.SpongeChunkLayout;
 import org.spongepowered.common.world.volume.VolumeStreamUtils;
 import org.spongepowered.common.world.volume.buffer.archetype.SpongeArchetypeVolume;
@@ -110,6 +112,14 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
     @Shadow public abstract void shadow$setBlockEntity(BlockPos pos, @javax.annotation.Nullable net.minecraft.world.level.block.entity.BlockEntity tileEntityIn);
     @Shadow public abstract void shadow$removeBlockEntity(BlockPos pos);
     @Shadow public abstract ResourceKey<net.minecraft.world.level.Level> shadow$dimension();
+    @Shadow public abstract LevelChunk shadow$getChunkAt(BlockPos param0);
+    @Shadow public abstract List<net.minecraft.world.entity.Entity> shadow$getEntities(
+            @org.jetbrains.annotations.Nullable net.minecraft.world.entity.Entity param0,
+            net.minecraft.world.phys.AABB param1,
+            @org.jetbrains.annotations.Nullable Predicate<? super net.minecraft.world.entity.Entity> param2);
+    @Shadow public abstract <T extends net.minecraft.world.entity.Entity> List<T> shadow$getEntitiesOfClass(Class<? extends T> param0,
+            net.minecraft.world.phys.AABB param1,
+            @org.jetbrains.annotations.Nullable Predicate<? super T> param2);
     // @formatter:on
 
     private Context impl$context;
@@ -289,13 +299,13 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
     }
 
     @Override
-    public Optional<org.spongepowered.api.entity.Entity> createEntity(final DataContainer container) {
-        throw new MissingImplementationException("World", "createEntity(container)");
+    public Optional<Entity> createEntity(final DataContainer container) {
+        return ((LevelBridge) this).bridge$createEntity(container, null, null);
     }
 
     @Override
-    public Optional<org.spongepowered.api.entity.Entity> createEntity(final DataContainer container, final Vector3d position) {
-        throw new MissingImplementationException("World", "createEntity(container, position)");
+    public Optional<Entity> createEntity(final DataContainer container, final Vector3d position) {
+        return Optional.ofNullable(((LevelBridge) this).bridge$createEntity(container, position, null));
     }
 
     @Override
@@ -396,4 +406,33 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
             }
         );
     }
+
+    @Override
+    public boolean spawnEntity(final Entity entity) {
+        return ((LevelChunkBridge) this.shadow$getChunkAt(((net.minecraft.world.entity.Entity) entity).blockPosition())).bridge$spawnEntity(entity);
+    }
+
+    @Override
+    public Collection<Entity> spawnEntities(final Iterable<? extends Entity> entities) {
+        final List<org.spongepowered.api.entity.Entity> entityList = new ArrayList<>();
+        for (final org.spongepowered.api.entity.Entity entity : entities) {
+            if (this.spawnEntity(entity)) {
+                entityList.add(entity);
+            }
+        }
+        return entityList;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Override
+    public <T extends Entity> Collection<? extends T> entities(final Class<? extends T> entityClass, final AABB box, @Nullable final Predicate<? super T> filter) {
+        return (List) this.shadow$getEntitiesOfClass((Class) entityClass, VecHelper.toMinecraftAABB(box), (Predicate) filter);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Override
+    public Collection<? extends Entity> entities(final AABB box, final Predicate<? super Entity> filter) {
+        return (List) this.shadow$getEntities(null, VecHelper.toMinecraftAABB(box), (Predicate) filter);
+    }
+
 }
