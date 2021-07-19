@@ -355,7 +355,8 @@ public abstract class LevelChunkMixin implements LevelChunkBridge, CacheKeyBridg
     @Override
     public boolean bridge$spawnEntity(final org.spongepowered.api.entity.Entity entity) {
         final net.minecraft.world.entity.Entity mcEntity = (net.minecraft.world.entity.Entity) entity;
-        if (this.chunkPos.equals(new ChunkPos(mcEntity.blockPosition()))) {
+        final BlockPos blockPos = mcEntity.blockPosition();
+        if (this.chunkPos.x == blockPos.getX() >> 4 && this.chunkPos.z == blockPos.getZ() >> 4) {
             this.shadow$addEntity(mcEntity);
             return true;
         }
