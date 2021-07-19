@@ -111,15 +111,15 @@ public interface LevelAccessorMixin_API {
     // Volume
 
     default Vector3i protoWorld$blockMin() {
-        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of IWorld that isn't part of Sponge API: " + this.getClass());
+        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of ProtoWorld that isn't part of Sponge API: " + this.getClass());
     }
 
     default Vector3i protoWorld$blockMax() {
-        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of IWorld that isn't part of Sponge API: " + this.getClass());
+        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of ProtoWorld that isn't part of Sponge API: " + this.getClass());
     }
 
     default Vector3i protoWorld$blockSize() {
-        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of IWorld that isn't part of Sponge API: " + this.getClass());
+        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of ProtoWorld that isn't part of Sponge API: " + this.getClass());
     }
 
     default boolean protoWorld$containsBlock(final int x, final int y, final int z) {
@@ -133,7 +133,7 @@ public interface LevelAccessorMixin_API {
     // EntityVolume
 
     default Optional<Entity> protoWorld$entity(final UUID uuid) {
-        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of IWorld that isn't part of Sponge API: " + this.getClass());
+        throw new UnsupportedOperationException("Unfortunately, you've found an extended class of ProtoWorld that isn't part of Sponge API: " + this.getClass());
     }
 
     // RandomProvider

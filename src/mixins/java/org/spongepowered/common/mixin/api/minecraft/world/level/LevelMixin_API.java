@@ -75,7 +75,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.common.accessor.server.level.ChunkMapAccessor;
 import org.spongepowered.common.adventure.SpongeAdventure;
 import org.spongepowered.common.bridge.world.level.LevelBridge;
-import org.spongepowered.common.bridge.world.level.chunk.LevelChunkBridge;
 import org.spongepowered.common.effect.particle.SpongeParticleHelper;
 import org.spongepowered.common.effect.record.SpongeMusicDisc;
 import org.spongepowered.common.util.Constants;
@@ -405,22 +404,6 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
                 return new Tuple<>(entity.blockPosition(), entity);
             }
         );
-    }
-
-    @Override
-    public boolean spawnEntity(final Entity entity) {
-        return ((LevelChunkBridge) this.shadow$getChunkAt(((net.minecraft.world.entity.Entity) entity).blockPosition())).bridge$spawnEntity(entity);
-    }
-
-    @Override
-    public Collection<Entity> spawnEntities(final Iterable<? extends Entity> entities) {
-        final List<org.spongepowered.api.entity.Entity> entityList = new ArrayList<>();
-        for (final org.spongepowered.api.entity.Entity entity : entities) {
-            if (this.spawnEntity(entity)) {
-                entityList.add(entity);
-            }
-        }
-        return entityList;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
