@@ -66,9 +66,9 @@ public abstract class ClientLevelMixin_API implements org.spongepowered.api.worl
         return (Optional) this.entitiesById.values().stream().filter(x -> x.getUUID().equals(uuid)).findFirst();
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public Collection<? extends ClientPlayer> players() {
-        return (Collection<? extends ClientPlayer>) new ArrayList<>(this.players);
+        return (Collection) new ArrayList<>(this.players);
     }
 }

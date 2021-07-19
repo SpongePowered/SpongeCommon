@@ -350,10 +350,10 @@ public abstract class LevelChunkMixin_API implements Chunk {
         return VecHelper.inBounds(x, y, z, this.blockMin(), this.blockMax());
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public Collection<? extends Player> players() {
-        return (Collection<? extends Player>) SpongeCommon.server().getPlayerList().getPlayers().stream()
+        return (Collection) SpongeCommon.server().getPlayerList().getPlayers().stream()
                 .filter(x -> x.inChunk && x.xChunk == this.chunkPos.x && x.zChunk == this.chunkPos.z)
                 .collect(Collectors.toList());
     }
