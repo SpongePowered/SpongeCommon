@@ -25,6 +25,7 @@
 package org.spongepowered.common.mixin.api.minecraft.world.level.chunk;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.ClassInstanceMultiMap;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.level.ChunkPos;
@@ -35,10 +36,15 @@ import net.minecraft.world.level.chunk.ChunkBiomeContainer;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.block.BlockState;
 import org.spongepowered.api.block.entity.BlockEntity;
+import org.spongepowered.api.data.persistence.DataContainer;
 import org.spongepowered.api.entity.Entity;
+import org.spongepowered.api.entity.EntityType;
+import org.spongepowered.api.entity.living.player.Player;
+import org.spongepowered.api.util.AABB;
 import org.spongepowered.api.util.Ticks;
 import org.spongepowered.api.world.HeightTypes;
 import org.spongepowered.api.world.biome.Biome;
@@ -52,6 +58,9 @@ import org.spongepowered.asm.mixin.Interface.Remap;
 import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.common.SpongeCommon;
+import org.spongepowered.common.bridge.world.level.LevelBridge;
+import org.spongepowered.common.bridge.world.level.chunk.LevelChunkBridge;
 import org.spongepowered.common.util.ChunkUtil;
 import org.spongepowered.common.util.SpongeTicks;
 import org.spongepowered.common.util.VecHelper;
@@ -61,11 +70,19 @@ import org.spongepowered.common.world.volume.buffer.biome.ObjectArrayMutableBiom
 import org.spongepowered.common.world.volume.buffer.block.ArrayMutableBlockBuffer;
 import org.spongepowered.common.world.volume.buffer.blockentity.ObjectArrayMutableBlockEntityBuffer;
 import org.spongepowered.common.world.volume.buffer.entity.ObjectArrayMutableEntityBuffer;
+import org.spongepowered.math.vector.Vector3d;
 import org.spongepowered.math.vector.Vector3i;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Mixin(net.minecraft.world.level.chunk.LevelChunk.class)
@@ -77,13 +94,22 @@ public abstract class LevelChunkMixin_API implements Chunk {
     @Shadow private long inhabitedTime;
     @Shadow @Final private ChunkPos chunkPos;
     @Shadow @Final private Level level;
+    @Shadow @Final private ClassInstanceMultiMap<net.minecraft.world.entity.Entity>[] entitySections;
 
     @Shadow public abstract boolean shadow$isEmpty();
     @Shadow public abstract int shadow$getHeight(Heightmap.Types param0, int param1, int param2);
+    @Shadow public abstract <T extends net.minecraft.world.entity.Entity> void shadow$getEntitiesOfClass(Class<? extends T> param0,
+            net.minecraft.world.phys.AABB param1,
+            List<T> param2, @org.jetbrains.annotations.Nullable Predicate<? super T> param3);
     //@formatter:on
 
-    private Vector3i api$blockMin;
-    private Vector3i api$blockMax;
+    @Shadow public abstract void shadow$getEntities(@org.jetbrains.annotations.Nullable net.minecraft.world.entity.Entity param0,
+            net.minecraft.world.phys.AABB param1,
+            List<net.minecraft.world.entity.Entity> param2,
+            @org.jetbrains.annotations.Nullable Predicate<? super net.minecraft.world.entity.Entity> param3);
+
+    private @Nullable Vector3i api$blockMin;
+    private @Nullable Vector3i api$blockMax;
 
     @Override
     public boolean setBiome(final int x, final int y, final int z, final Biome biome) {
@@ -118,8 +144,8 @@ public abstract class LevelChunkMixin_API implements Chunk {
     }
 
     @Override
-    public org.spongepowered.api.world.World<?, ?> world() {
-        return ((org.spongepowered.api.world.World<?, ?>) this.level);
+    public org.spongepowered.api.world.World<@NonNull ?, @NonNull ?> world() {
+        return ((org.spongepowered.api.world.World<@NonNull ?, @NonNull ?>) this.level);
     }
 
     @Intrinsic
@@ -322,6 +348,86 @@ public abstract class LevelChunkMixin_API implements Chunk {
     @Override
     public boolean isAreaAvailable(final int x, final int y, final int z) {
         return VecHelper.inBounds(x, y, z, this.blockMin(), this.blockMax());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Override
+    public Collection<? extends Player> players() {
+        return (Collection) SpongeCommon.server().getPlayerList().getPlayers().stream()
+                .filter(x -> x.inChunk && x.xChunk == this.chunkPos.x && x.zChunk == this.chunkPos.z)
+                .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    public Optional<Entity> entity(final UUID uuid) {
+        return (Optional) Arrays.stream(this.entitySections).flatMap(Collection::stream).filter(x -> x.getUUID().equals(uuid)).findAny();
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    public <T extends Entity> Collection<? extends T> entities(final Class<? extends T> entityClass, final AABB box, @Nullable final Predicate<? super T> predicate) {
+        final List<T> entities = new ArrayList<>();
+        this.shadow$getEntitiesOfClass((Class<? extends net.minecraft.world.entity.Entity>) entityClass,
+                VecHelper.toMinecraftAABB(box),
+                (List) entities,
+                (Predicate) predicate);
+        return entities;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Override
+    public Collection<? extends Entity> entities(final AABB box, final Predicate<? super Entity> filter) {
+        final List<Entity> entities = new ArrayList<>();
+        this.shadow$getEntities(null, VecHelper.toMinecraftAABB(box), (List) entities, (Predicate) filter);
+        return entities;
+    }
+
+    @Override
+    public <E extends Entity> E createEntity(final EntityType<E> type, final Vector3d position) throws IllegalArgumentException, IllegalStateException {
+        this.api$checkPositionInChunk(position);
+        return ((LevelBridge) this.level).bridge$createEntity(type, position, false);
+    }
+
+    @Override
+    public <E extends Entity> E createEntityNaturally(final EntityType<E> type, final Vector3d position)
+            throws IllegalArgumentException, IllegalStateException {
+        this.api$checkPositionInChunk(position);
+        return ((LevelBridge) this.level).bridge$createEntity(type, position, true);
+    }
+
+    @Override
+    public Optional<Entity> createEntity(final DataContainer container) {
+        return Optional.ofNullable(((LevelBridge) this.level).bridge$createEntity(container, null,
+                position -> VecHelper.inBounds(position, this.blockMin(), this.blockMax())));
+    }
+
+    @Override
+    public Optional<Entity> createEntity(final DataContainer container, final Vector3d position) {
+        this.api$checkPositionInChunk(position);
+        return Optional.ofNullable(((LevelBridge) this.level).bridge$createEntity(container, position, null));
+    }
+
+    @Override
+    public boolean spawnEntity(final Entity entity) {
+        return ((LevelChunkBridge) this).bridge$spawnEntity(entity);
+    }
+
+    @Override
+    public Collection<Entity> spawnEntities(final Iterable<? extends Entity> entities) {
+        final List<org.spongepowered.api.entity.Entity> entityList = new ArrayList<>();
+        for (final org.spongepowered.api.entity.Entity entity : entities) {
+            if (this.spawnEntity(entity)) {
+                entityList.add(entity);
+            }
+        }
+        return entityList;
+    }
+
+    private void api$checkPositionInChunk(final Vector3d position) {
+        if (!VecHelper.inBounds(position, this.blockMin(), this.blockMax())) {
+            throw new IllegalArgumentException("Supplied bounds are not within this chunk.");
+        }
     }
 
 }
